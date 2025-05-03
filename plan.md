@@ -137,7 +137,7 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
 1. ✅ Create directory structure
 2. ✅ Implement download script with checksums
 3. Implement individual component build scripts:
-   - 3.1. Binutils (bootstrap)
+   - 3.1. ✅ Binutils (bootstrap)
    - 3.2. Bootstrap GCC (C only)
    - 3.3. Linux kernel headers
    - 3.4. Minimal glibc headers

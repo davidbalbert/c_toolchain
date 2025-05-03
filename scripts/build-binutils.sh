@@ -1,15 +1,32 @@
 #!/bin/bash
 set -euo pipefail
 
+# Print usage information
+print_usage() {
+    echo "Usage: $(basename "$0") [OPTIONS]"
+    echo ""
+    echo "Build binutils for the specified target architecture."
+    echo ""
+    echo "Options:"
+    echo "  --build-root=DIR     Set the build root directory (default: project root)"
+    echo "  --target=TRIPLE      Set the target architecture triple"
+    echo "  --host=TRIPLE        Set the host architecture triple"
+    echo "  --clean              Clean the build directory before building"
+    echo "  --bootstrap          Build bootstrap binutils using the system compiler"
+    echo "  --help               Display this help message"
+}
+
 # Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source common definitions
+source "$SCRIPT_DIR/common.sh"
 
 # Default values
 BUILD_ROOT="$ROOT_DIR"
 TARGET=""
 HOST=""
-PREFIX=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
 
@@ -25,14 +42,20 @@ for arg in "$@"; do
         --host=*)
             HOST="${arg#*=}"
             ;;
-        --prefix=*)
-            PREFIX="${arg#*=}"
-            ;;
         --clean)
             CLEAN_BUILD=true
             ;;
         --bootstrap)
             BOOTSTRAP=true
+            ;;
+        --help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            echo "Error: Unknown option '$arg'"
+            print_usage
+            exit 1
             ;;
     esac
 done
@@ -45,10 +68,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
     exit 1
 fi
 
-# Get versions from download.sh
-BINUTILS_VERSION=$(grep BINUTILS_VERSION "$SCRIPT_DIR/download.sh" | cut -d'"' -f2)
-GCC_VERSION=$(grep GCC_VERSION "$SCRIPT_DIR/download.sh" | cut -d'"' -f2)
-GLIBC_VERSION=$(grep GLIBC_VERSION "$SCRIPT_DIR/download.sh" | cut -d'"' -f2)
+# Versions are defined in common.sh
 
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 echo "Detected system: $SYSTEM_TRIPLE"
@@ -73,22 +93,14 @@ if [ "$BOOTSTRAP" = "true" ]; then
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
     BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
 
-    # Set default prefix if not specified
-    if [ -z "$PREFIX" ]; then
-        PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
-    fi
-
+    PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
     SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 else
     # This path is not currently used since we require bootstrap
     BUILD_DIR="$BUILD_ROOT/build/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
     BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
 
-    # Set default prefix if not specified
-    if [ -z "$PREFIX" ]; then
-        PREFIX="$BUILD_ROOT/out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
-    fi
-
+    PREFIX="$BUILD_ROOT/out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
     SYSROOT="$BUILD_ROOT/out/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 fi
 
@@ -136,8 +148,8 @@ echo "Configuring binutils..."
     --enable-static \
     --disable-multilib \
     "CONFIG_SHELL=/bin/bash" \
-    CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=/src -ffile-prefix-map=$BUILD_DIR=/build" \
-    CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=/src -ffile-prefix-map=$BUILD_DIR=/build"
+    CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+    CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
 # Build and install binutils
 echo "Building binutils..."
