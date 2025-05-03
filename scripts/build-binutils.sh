@@ -130,15 +130,16 @@ cd "$BINUTILS_BUILD_DIR"
 # Configure binutils
 echo "Configuring binutils..."
 "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
-    --build="$HOST" \
+    --prefix="$PREFIX" \
+    --with-sysroot="$SYSROOT" \
     --host="$HOST" \
     --target="$TARGET" \
-    --prefix="$PREFIX" \
+    --program-prefix="$TARGET-" \
+    --enable-new-dtags \
+    --enable-static \
+    --disable-shared \
     --disable-nls \
     --disable-werror \
-    --with-sysroot="$SYSROOT" \
-    --disable-shared \
-    --enable-static \
     --disable-multilib \
     "CONFIG_SHELL=/bin/bash" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
