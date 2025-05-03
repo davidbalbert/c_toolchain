@@ -13,13 +13,6 @@
   - `SOURCE_DATE_EPOCH=1`
   - `LC_ALL=C`
 
-## Component Versions
-
-- GCC: 15.1.0
-- Binutils: latest stable (TBD)
-- glibc: latest stable (TBD)
-- Linux: latest LTS kernel (TBD)
-
 ## Build Command Reference
 
 ```bash
@@ -32,3 +25,4 @@
 - Using bootstrap compiler approach for reproducibility
 - No Docker dependency, using path normalization instead
 - Will eventually need to support macOS builds
+- Ignore the contents of any folders within the build directory, out directory, and src directory. There will be way to many of them and you will probably hang!

@@ -4,17 +4,34 @@ set -euo pipefail
 # Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Default directories
+DEFAULT_SRC_DIR=
+DEFAULT_PKG_DIR=
+
+# Parse command line options
 SRC_DIR="$ROOT_DIR/src"
 PKG_DIR="$ROOT_DIR/pkg"
+
+for arg in "$@"; do
+    case $arg in
+        --src-dir=*)
+            SRC_DIR="${arg#*=}"
+            ;;
+        --pkg-dir=*)
+            PKG_DIR="${arg#*=}"
+            ;;
+    esac
+done
 
 # Create directories if they don't exist
 mkdir -p "$SRC_DIR" "$PKG_DIR"
 
 # Package versions
 GCC_VERSION="15.1.0"
-BINUTILS_VERSION="2.41"
-GLIBC_VERSION="2.39"
-LINUX_VERSION="6.6.22"
+BINUTILS_VERSION="2.44"
+GLIBC_VERSION="2.41"
+LINUX_VERSION="6.6.89"
 
 # URLs
 GCC_URL="https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz"

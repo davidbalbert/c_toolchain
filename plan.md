@@ -27,7 +27,7 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 │   │   └── gcc-final.sh
 ├── src/                 # Downloaded source code
 ├── build/               # Build directories
-└── output/              # Final toolchains and sysroots
+└── out/                 # Final toolchains and sysroots
 ```
 
 ## Build Sequence (aarch64 Linux Non-Cross Compiler)
