@@ -153,4 +153,4 @@ make -j$(nproc) all-gcc
 echo "Installing bootstrap GCC..."
 make install-gcc
 
-echo "Bootstrap GCC (C compiler only) build complete. Installed to $PREFIX"
+echo "Bootstrap GCC build complete. Installed to $PREFIX"
