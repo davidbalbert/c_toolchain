@@ -3,26 +3,19 @@ set -euo pipefail
 
 # Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Default directories
-DEFAULT_SRC_DIR=
-DEFAULT_PKG_DIR=
-
-# Parse command line options
-SRC_DIR="$ROOT_DIR/src"
-PKG_DIR="$ROOT_DIR/pkg"
+BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 
 for arg in "$@"; do
     case $arg in
-        --src-dir=*)
-            SRC_DIR="${arg#*=}"
-            ;;
-        --pkg-dir=*)
-            PKG_DIR="${arg#*=}"
+        --build-root=*)
+            BUILD_ROOT="${arg#*=}"
             ;;
     esac
 done
+
+# Define paths based on build root
+SRC_DIR="$BUILD_ROOT/src"
+PKG_DIR="$BUILD_ROOT/pkg"
 
 # Create directories if they don't exist
 mkdir -p "$SRC_DIR" "$PKG_DIR"
@@ -40,48 +33,65 @@ GLIBC_URL="https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz"
 LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$LINUX_VERSION.tar.gz"
 
 # Expected SHA256 checksums
-# Note: These are placeholders - need to be updated with actual checksums
-GCC_SHA256="placeholder"
-BINUTILS_SHA256="placeholder"
-GLIBC_SHA256="placeholder"
-LINUX_SHA256="placeholder"
+GCC_SHA256="51b9919ea69c980d7a381db95d4be27edf73b21254eb13d752a08003b4d013b1"
+BINUTILS_SHA256="0cdd76777a0dfd3dd3a63f215f030208ddb91c2361d2bcc02acec0f1c16b6a2e"
+GLIBC_SHA256="c7be6e25eeaf4b956f5d4d56a04d23e4db453fc07760f872903bb61a49519b80"
+LINUX_SHA256="724f68742eeccf26e090f03dd8dfbf9c159d65f91d59b049e41f996fa41d9bc1"
 
 # Download function
 download() {
     local url="$1"
     local output="$2"
     local expected_sha256="$3"
-    local name="$4"
-    
-    echo "Downloading $name from $url..."
+    local src="$4"
+    local checksum_ok=false
+
+    # Check if file exists and verify checksum
     if [ -f "$output" ]; then
-        echo "$name already downloaded, checking checksum..."
-    else
-        curl -L "$url" -o "$output"
-        echo "Download complete."
+        echo -n "$(basename $output) already downloaded, verifying checksum..."
+        if echo "$expected_sha256 $output" | sha256sum -c - &>/dev/null; then
+            echo " verified"
+            checksum_ok=true
+        else
+            echo
+            echo "Checksum mismatch for $(basename $output)! Re-downloading..."
+            rm -f "$output"
+            # Remove extracted directory if it exists
+            if [ -d "$SRC_DIR/$src" ]; then
+                echo "Removing $SRC_DIR/src..."
+                rm -rf "$SRC_DIR/$src"
+            fi
+        fi
     fi
-    
-    if [ "$expected_sha256" != "placeholder" ]; then
-        echo "Verifying checksum..."
-        echo "$expected_sha256 $output" | sha256sum -c -
+
+    # Download if needed
+    if [ "$checksum_ok" != "true" ]; then
+        echo "Downloading $url..."
+        curl -L "$url" -o "$output"
+        echo "Download complete. Verifying checksum..."
+
+        # Verify checksum
+        if ! echo "$expected_sha256 $output" | sha256sum -c -; then
+            echo "ERROR: Checksum verification failed for $(basename $output)!"
+            rm -f "$output"
+            exit 1
+        fi
         echo "Checksum verified."
+    fi
+
+    # Extract if needed
+    if [ -d "$SRC_DIR/$src" ]; then
+        echo "Skipping $SRC_DIR/$src. Already extracted."
     else
-        echo "WARNING: Checksum verification skipped for $name. Update script with actual checksums."
+        echo "Extracting $(basename $output)..."
+        tar -xzf "$output" -C "$SRC_DIR"
     fi
 }
 
-# Download all sources
-download "$GCC_URL" "$PKG_DIR/gcc-$GCC_VERSION.tar.gz" "$GCC_SHA256" "GCC $GCC_VERSION"
-download "$BINUTILS_URL" "$PKG_DIR/binutils-$BINUTILS_VERSION.tar.gz" "$BINUTILS_SHA256" "Binutils $BINUTILS_VERSION"
-download "$GLIBC_URL" "$PKG_DIR/glibc-$GLIBC_VERSION.tar.gz" "$GLIBC_SHA256" "glibc $GLIBC_VERSION"
-download "$LINUX_URL" "$PKG_DIR/linux-$LINUX_VERSION.tar.gz" "$LINUX_SHA256" "Linux kernel $LINUX_VERSION"
-
-# Extract tarballs
-for tarball in "$PKG_DIR"/*.tar.gz; do
-    if [ -f "$tarball" ]; then
-        echo "Extracting $(basename "$tarball")..."
-        tar -xzf "$tarball" -C "$SRC_DIR"
-    fi
-done
+# Download and extract all sources
+download "$GCC_URL" "$PKG_DIR/gcc-$GCC_VERSION.tar.gz" "$GCC_SHA256" "gcc-$GCC_VERSION"
+download "$BINUTILS_URL" "$PKG_DIR/binutils-$BINUTILS_VERSION.tar.gz" "$BINUTILS_SHA256" "binutils-$BINUTILS_VERSION"
+download "$GLIBC_URL" "$PKG_DIR/glibc-$GLIBC_VERSION.tar.gz" "$GLIBC_SHA256" "glibc-$GLIBC_VERSION"
+download "$LINUX_URL" "$PKG_DIR/linux-$LINUX_VERSION.tar.gz" "$LINUX_SHA256" "linux-$LINUX_VERSION"
 
 echo "All sources downloaded and extracted successfully."

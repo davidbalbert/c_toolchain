@@ -69,13 +69,6 @@ fi
 # Create directories
 mkdir -p "$SRC_DIR" "$BUILD_DIR" "$OUT_DIR" "$PKG_DIR"
 
-# Export paths and architecture settings for component scripts
-export BUILD_ROOT_SRC_DIR="$SRC_DIR"
-export BUILD_ROOT_BUILD_DIR="$BUILD_DIR"
-export BUILD_ROOT_OUT_DIR="$OUT_DIR"
-export BUILD_ROOT_PKG_DIR="$PKG_DIR"
-export BUILD_HOST="$HOST"
-
 # Download sources if needed
 if [ ! -d "$SRC_DIR/binutils-"* ] || [ ! -d "$SRC_DIR/gcc-"* ]; then
     echo "Downloading and extracting source packages..."
