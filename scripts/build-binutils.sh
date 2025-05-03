@@ -107,11 +107,7 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
     rm -rf "$BINUTILS_BUILD_DIR"
 fi
 
-# Create build directory
 mkdir -p "$BINUTILS_BUILD_DIR"
-
-# Create output directories
-mkdir -p "$PREFIX/bin" "$PREFIX/lib"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
