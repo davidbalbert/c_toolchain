@@ -35,12 +35,20 @@ if [ "$CLEAN_SOURCES" = true ]; then
 
     echo "Deleting $SRC_DIR/linux-$LINUX_VERSION"
     rm -rf "$SRC_DIR/linux-$LINUX_VERSION"
-fi
 
-GCC_URL="https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz"
-BINUTILS_URL="https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz"
-GLIBC_URL="https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz"
-LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$LINUX_VERSION.tar.gz"
+    # GCC dependencies
+    echo "Deleting $SRC_DIR/gmp-$GMP_VERSION"
+    rm -rf "$SRC_DIR/gmp-$GMP_VERSION"
+
+    echo "Deleting $SRC_DIR/mpfr-$MPFR_VERSION"
+    rm -rf "$SRC_DIR/mpfr-$MPFR_VERSION"
+
+    echo "Deleting $SRC_DIR/mpc-$MPC_VERSION"
+    rm -rf "$SRC_DIR/mpc-$MPC_VERSION"
+
+    echo "Deleting $SRC_DIR/isl-$ISL_VERSION"
+    rm -rf "$SRC_DIR/isl-$ISL_VERSION"
+fi
 
 download() {
     local url="$1"
@@ -48,50 +56,83 @@ download() {
     local expected_sha256="$3"
     local src="$4"
     local checksum_ok=false
+    local skip_checksum=false
+
+    # Check if this is a placeholder checksum
+    if [ "$expected_sha256" = "placeholder" ]; then
+        echo "WARNING: Placeholder checksum for $(basename $output). Skipping checksum verification."
+        skip_checksum=true
+        checksum_ok=true
+    fi
 
     # Check if file exists and verify checksum
     if [ -f "$output" ]; then
-        echo -n Verifying "$(basename $output)..."
-        if echo "$expected_sha256 $output" | sha256sum -c - &>/dev/null; then
-            echo " verified"
-            checksum_ok=true
+        if [ "$skip_checksum" = "true" ]; then
+            echo "File $(basename $output) exists. Skipping checksum verification."
         else
-            echo
-            echo "Checksum mismatch for $(basename $output)! Re-downloading..."
-            rm -f "$output"
-            # Remove extracted directory if it exists
-            if [ -d "$SRC_DIR/$src" ]; then
-                echo "Removing $SRC_DIR/src..."
-                rm -rf "$SRC_DIR/$src"
+            echo -n Verifying "$(basename $output)..."
+            if echo "$expected_sha256 $output" | sha256sum -c - &>/dev/null; then
+                echo " verified"
+                checksum_ok=true
+            else
+                echo
+                echo "Checksum mismatch for $(basename $output)! Re-downloading..."
+                rm -f "$output"
+                # Remove extracted directory if it exists
+                if [ -d "$SRC_DIR/$src" ]; then
+                    echo "Removing $SRC_DIR/$src..."
+                    rm -rf "$SRC_DIR/$src"
+                fi
             fi
         fi
     fi
 
-    if [ "$checksum_ok" != "true" ]; then
+    if ! [ -f "$output" ]; then
         echo "Downloading $url..."
         curl -L "$url" -o "$output"
-        echo "Download complete. Verifying checksum..."
 
-        if ! echo "$expected_sha256 $output" | sha256sum -c -; then
-            echo "ERROR: Checksum verification failed for $(basename $output)!"
-            rm -f "$output"
-            exit 1
+        if [ "$skip_checksum" = "false" ]; then
+            echo "Download complete. Verifying checksum..."
+            if ! echo "$expected_sha256 $output" | sha256sum -c -; then
+                echo "ERROR: Checksum verification failed for $(basename $output)!"
+                rm -f "$output"
+                exit 1
+            fi
+            echo "Checksum verified."
+        else
+            echo "Download complete. Checksum verification skipped."
         fi
-        echo "Checksum verified."
     fi
 
     if [ -d "$SRC_DIR/$src" ]; then
         echo "Skipping $SRC_DIR/$src. Already extracted."
     else
         echo "Extracting $(basename $output)..."
-        tar -xzf "$output" -C "$SRC_DIR"
+        tar -xf "$output" -C "$SRC_DIR"
     fi
 }
+
+GCC_URL="https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz"
+BINUTILS_URL="https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz"
+GLIBC_URL="https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz"
+LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$LINUX_VERSION.tar.gz"
+
+# GCC dependencies URLs
+GMP_URL="https://ftp.gnu.org/gnu/gmp/gmp-$GMP_VERSION.tar.gz"
+MPFR_URL="https://www.mpfr.org/mpfr-$MPFR_VERSION/mpfr-$MPFR_VERSION.tar.gz"
+MPC_URL="https://ftp.gnu.org/gnu/mpc/mpc-$MPC_VERSION.tar.gz"
+ISL_URL="https://gcc.gnu.org/pub/gcc/infrastructure/isl-$ISL_VERSION.tar.bz2"
 
 # Download and extract all sources
 download "$GCC_URL" "$PKG_DIR/gcc-$GCC_VERSION.tar.gz" "$GCC_SHA256" "gcc-$GCC_VERSION"
 download "$BINUTILS_URL" "$PKG_DIR/binutils-$BINUTILS_VERSION.tar.gz" "$BINUTILS_SHA256" "binutils-$BINUTILS_VERSION"
 download "$GLIBC_URL" "$PKG_DIR/glibc-$GLIBC_VERSION.tar.gz" "$GLIBC_SHA256" "glibc-$GLIBC_VERSION"
 download "$LINUX_URL" "$PKG_DIR/linux-$LINUX_VERSION.tar.gz" "$LINUX_SHA256" "linux-$LINUX_VERSION"
+
+# Download and extract GCC dependencies
+download "$GMP_URL" "$PKG_DIR/gmp-$GMP_VERSION.tar.gz" "$GMP_SHA256" "gmp-$GMP_VERSION"
+download "$MPFR_URL" "$PKG_DIR/mpfr-$MPFR_VERSION.tar.gz" "$MPFR_SHA256" "mpfr-$MPFR_VERSION"
+download "$MPC_URL" "$PKG_DIR/mpc-$MPC_VERSION.tar.gz" "$MPC_SHA256" "mpc-$MPC_VERSION"
+download "$ISL_URL" "$PKG_DIR/isl-$ISL_VERSION.tar.bz2" "$ISL_SHA256" "isl-$ISL_VERSION"
 
 echo "All sources downloaded and extracted successfully."

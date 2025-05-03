@@ -6,8 +6,20 @@ BINUTILS_VERSION="2.44"
 GLIBC_VERSION="2.41"
 LINUX_VERSION="6.6.89"
 
+# GCC dependencies versions
+GMP_VERSION="6.3.0"    # GNU Multiple Precision Arithmetic Library
+MPFR_VERSION="4.2.2"   # GNU Multiple Precision Floating-Point Reliable Library
+MPC_VERSION="1.3.1"    # GNU Multiple Precision Complex Library
+ISL_VERSION="0.24"     # Integer Set Library
+
 # Expected SHA256 checksums
 GCC_SHA256="51b9919ea69c980d7a381db95d4be27edf73b21254eb13d752a08003b4d013b1"
 BINUTILS_SHA256="0cdd76777a0dfd3dd3a63f215f030208ddb91c2361d2bcc02acec0f1c16b6a2e"
 GLIBC_SHA256="c7be6e25eeaf4b956f5d4d56a04d23e4db453fc07760f872903bb61a49519b80"
 LINUX_SHA256="724f68742eeccf26e090f03dd8dfbf9c159d65f91d59b049e41f996fa41d9bc1"
+
+# GCC dependencies SHA256 checksums
+GMP_SHA256="e56fd59d76810932a0555aa15a14b61c16bed66110d3c75cc2ac49ddaa9ab24c"
+MPFR_SHA256="826cbb24610bd193f36fde172233fb8c009f3f5c2ad99f644d0dea2e16a20e42"
+MPC_SHA256="ab642492f5cf882b74aa0cb730cd410a81edcdbec895183ce930e706c1c759b8"
+ISL_SHA256="fcf78dd9656c10eb8cf9fbd5f59a0b6b01386205fe1934b3b287a0a1898145c0"
