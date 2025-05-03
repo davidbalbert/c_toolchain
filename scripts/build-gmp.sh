@@ -5,14 +5,14 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build binutils for the specified target architecture."
+    echo "Build GMP (GNU Multiple Precision Arithmetic Library) for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build bootstrap binutils using the system compiler"
+    echo "  --bootstrap          Build bootstrap GMP using the system compiler"
     echo "  --help               Display this help message"
 }
 
@@ -92,67 +92,58 @@ if [ "$BOOTSTRAP" = "true" ]; then
 
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 else
     BUILD_DIR="$BUILD_ROOT/build/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 fi
 
-BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
+GMP_BUILD_DIR="$BUILD_DIR/gmp"
 
 # Clean build directory if requested
-if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
-    echo "Cleaning $BINUTILS_BUILD_DIR..."
-    rm -rf "$BINUTILS_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$GMP_BUILD_DIR" ]; then
+    echo "Cleaning $GMP_BUILD_DIR..."
+    rm -rf "$GMP_BUILD_DIR"
 fi
 
 # Create build directory
-mkdir -p "$BINUTILS_BUILD_DIR"
+mkdir -p "$GMP_BUILD_DIR"
 
 # Create output directories
-mkdir -p "$PREFIX/bin" "$PREFIX/lib"
-mkdir -p "$SYSROOT"
+mkdir -p "$PREFIX/lib"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building binutils-$BINUTILS_VERSION"
+echo "Building gmp-$GMP_VERSION"
 echo "Host: $HOST"
 echo "Target: $TARGET"
 echo "Bootstrap: $BOOTSTRAP"
-echo "Source: $SRC_DIR/binutils-$BINUTILS_VERSION"
-echo "Build: $BINUTILS_BUILD_DIR"
+echo "Source: $SRC_DIR/gmp-$GMP_VERSION"
+echo "Build: $GMP_BUILD_DIR"
 echo "Prefix: $PREFIX"
-echo "Sysroot: $SYSROOT"
 echo
 
 # Change to build directory
-cd "$BINUTILS_BUILD_DIR"
+cd "$GMP_BUILD_DIR"
 
-# Configure binutils
-echo "Configuring binutils..."
-"$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
+# Configure GMP
+echo "Configuring GMP..."
+"$SRC_DIR/gmp-$GMP_VERSION/configure" \
     --build="$HOST" \
     --host="$HOST" \
-    --target="$TARGET" \
     --prefix="$PREFIX" \
-    --disable-nls \
-    --disable-werror \
-    --with-sysroot="$SYSROOT" \
     --disable-shared \
     --enable-static \
-    --disable-multilib \
     "CONFIG_SHELL=/bin/bash" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-# Build and install binutils
-echo "Building binutils..."
+# Build and install GMP
+echo "Building GMP..."
 make -j$(nproc)
 
-echo "Installing binutils..."
+echo "Installing GMP..."
 make install
 
-echo "Binutils bootstrap build complete. Installed to $PREFIX"
+echo "GMP bootstrap build complete. Installed to $PREFIX"

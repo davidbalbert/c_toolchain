@@ -5,14 +5,13 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build binutils for the specified target architecture."
+    echo "Install Linux kernel headers for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
-    echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build bootstrap binutils using the system compiler"
+    echo "  --bootstrap          Build bootstrap kernel headers using the system compiler"
     echo "  --help               Display this help message"
 }
 
@@ -25,7 +24,6 @@ source "$SCRIPT_DIR/common.sh"
 
 # Default values
 BUILD_ROOT="$ROOT_DIR"
-HOST=""
 TARGET=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
@@ -35,9 +33,6 @@ for arg in "$@"; do
     case $arg in
         --build-root=*)
             BUILD_ROOT="${arg#*=}"
-            ;;
-        --host=*)
-            HOST="${arg#*=}"
             ;;
         --target=*)
             TARGET="${arg#*=}"
@@ -75,14 +70,7 @@ echo "Detected system: $SYSTEM_TRIPLE"
 
 # Set paths according to our directory structure
 if [ "$BOOTSTRAP" = "true" ]; then
-    # In bootstrap mode, host and target must be the current system triple
-    if [ -z "$HOST" ]; then
-        HOST="$SYSTEM_TRIPLE"
-    elif [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-        echo "Error: with --bootstrap, --host must be ($SYSTEM_TRIPLE)"
-        exit 1
-    fi
-
+    # In bootstrap mode, target must be the current system triple
     if [ -z "$TARGET" ]; then
         TARGET="$SYSTEM_TRIPLE"
     elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
@@ -90,69 +78,58 @@ if [ "$BOOTSTRAP" = "true" ]; then
         exit 1
     fi
 
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
+    BUILD_DIR="$BUILD_ROOT/build/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
     SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 else
-    BUILD_DIR="$BUILD_ROOT/build/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION"
+    BUILD_DIR="$BUILD_ROOT/build/sysroots/$TARGET-glibc-$GLIBC_VERSION"
     SYSROOT="$BUILD_ROOT/out/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 fi
 
-BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
+LINUX_BUILD_DIR="$BUILD_DIR/linux-headers"
+
+# Get the architecture from the target triple
+TARGET_ARCH=$(echo "$TARGET" | cut -d'-' -f1)
+case "$TARGET_ARCH" in
+    x86_64)
+        KERNEL_ARCH="x86_64"
+        ;;
+    aarch64)
+        KERNEL_ARCH="arm64"
+        ;;
+    *)
+        echo "Error: Unsupported architecture: $TARGET_ARCH"
+        exit 1
+        ;;
+esac
 
 # Clean build directory if requested
-if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
-    echo "Cleaning $BINUTILS_BUILD_DIR..."
-    rm -rf "$BINUTILS_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$LINUX_BUILD_DIR" ]; then
+    echo "Cleaning $LINUX_BUILD_DIR..."
+    rm -rf "$LINUX_BUILD_DIR"
 fi
-
-# Create build directory
-mkdir -p "$BINUTILS_BUILD_DIR"
-
-# Create output directories
-mkdir -p "$PREFIX/bin" "$PREFIX/lib"
-mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building binutils-$BINUTILS_VERSION"
-echo "Host: $HOST"
-echo "Target: $TARGET"
+echo "Installing Linux kernel headers $LINUX_VERSION"
+echo "Target architecture: $TARGET_ARCH (kernel: $KERNEL_ARCH)"
 echo "Bootstrap: $BOOTSTRAP"
-echo "Source: $SRC_DIR/binutils-$BINUTILS_VERSION"
-echo "Build: $BINUTILS_BUILD_DIR"
-echo "Prefix: $PREFIX"
+echo "Source: $SRC_DIR/linux-$LINUX_VERSION"
 echo "Sysroot: $SYSROOT"
 echo
 
-# Change to build directory
-cd "$BINUTILS_BUILD_DIR"
+# Change to Linux source directory
+cd "$SRC_DIR/linux-$LINUX_VERSION"
 
-# Configure binutils
-echo "Configuring binutils..."
-"$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
-    --build="$HOST" \
-    --host="$HOST" \
-    --target="$TARGET" \
-    --prefix="$PREFIX" \
-    --disable-nls \
-    --disable-werror \
-    --with-sysroot="$SYSROOT" \
-    --disable-shared \
-    --enable-static \
-    --disable-multilib \
-    "CONFIG_SHELL=/bin/bash" \
-    CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-    CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
+# Clean the kernel source directory
+make mrproper
 
-# Build and install binutils
-echo "Building binutils..."
-make -j$(nproc)
+# Install the headers to the sysroot
+echo "Installing kernel headers..."
+make ARCH="$KERNEL_ARCH" \
+     INSTALL_HDR_PATH="$SYSROOT/usr" \
+     O="$LINUX_BUILD_DIR" \
+     headers_install
 
-echo "Installing binutils..."
-make install
-
-echo "Binutils bootstrap build complete. Installed to $PREFIX"
+echo "Linux kernel headers installed in $SYSROOT/usr/include"
