@@ -18,17 +18,62 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 /
 ├── scripts/
 │   ├── download.sh      # Download and verify source tarballs
-│   ├── build.sh         # Main build orchestration 
-│   ├── components/      # Individual component build scripts
-│   │   ├── binutils.sh
-│   │   ├── gcc-bootstrap.sh
-│   │   ├── kernel-headers.sh
-│   │   ├── glibc.sh
-│   │   └── gcc-final.sh
+│   ├── build.sh         # Main build orchestration
+│   ├── build-binutils.sh # Binutils build script
+│   ├── [other component scripts]
 ├── src/                 # Downloaded source code
 ├── build/               # Build directories
-└── out/                 # Final toolchains and sysroots
+│   ├── toolchains/      # Final toolchain build directories
+│   │   └── $HOST/
+│   │       └── $TARGET-gcc-$GCC_VERSION/
+│   │           ├── binutils/
+│   │           ├── gcc/
+│   │           └── [other components]
+│   ├── sysroots/        # Final sysroot build directories
+│   │   └── $TARGET-glibc-$GLIBC_VERSION/
+│   │       ├── kernel-headers/
+│   │       ├── glibc/
+│   │       └── [other components]
+│   └── bootstrap/       # Bootstrap build directories
+│       ├── toolchains/
+│       │   └── $TARGET-gcc-$GCC_VERSION/
+│       │       ├── binutils/
+│       │       ├── gcc/
+│       │       └── [other components]
+│       └── sysroots/
+│           └── $TARGET-glibc-$GLIBC_VERSION/
+└── out/                 # Final output directories
+    ├── toolchains/      # Final toolchains
+    │   └── $HOST/
+    │       └── $TARGET-gcc-$GCC_VERSION/
+    ├── sysroots/        # Final sysroots
+    │   └── $TARGET-glibc-$GLIBC_VERSION/
+    └── bootstrap/       # Bootstrap artifacts
+        ├── toolchains/
+        │   └── $TARGET-gcc-$GCC_VERSION/
+        └── sysroots/
+            └── $TARGET-glibc-$GLIBC_VERSION/
 ```
+
+## Directory Structure Explanation
+
+### Build Directories
+- `build/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION/binutils/` - Final toolchain components
+- `build/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Final sysroot components
+- `build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION/binutils/` - Bootstrap components
+- `build/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Bootstrap sysroot components
+
+### Output Directories
+- `out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION/` - Final toolchains
+- `out/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Final sysroots
+- `out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION/` - Bootstrap toolchains
+- `out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Bootstrap sysroots
+
+### Key Variables
+- `$HOST` - Host architecture (where the compiler runs)
+- `$TARGET` - Target architecture (what the compiler builds for)
+- `$GCC_VERSION` - GCC version (e.g., "15.1.0")
+- `$GLIBC_VERSION` - glibc version (e.g., "2.41")
 
 ## Build Sequence (aarch64 Linux Non-Cross Compiler)
 
@@ -91,7 +136,15 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
 
 1. ✅ Create directory structure
 2. ✅ Implement download script with checksums
-3. Implement individual component build scripts
+3. Implement individual component build scripts:
+   - 3.1. Binutils (bootstrap)
+   - 3.2. Bootstrap GCC (C only)
+   - 3.3. Linux kernel headers
+   - 3.4. Minimal glibc headers
+   - 3.5. Bootstrap GCC with C++ support
+   - 3.6. Complete glibc
+   - 3.7. Binutils (final)
+   - 3.8. Final GCC toolchain
 4. Create main orchestration script
 5. Test aarch64 → aarch64 build
 6. Verify reproducibility
