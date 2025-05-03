@@ -4,11 +4,15 @@ set -euo pipefail
 # Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
+CLEAN_SOURCES=false
 
 for arg in "$@"; do
     case $arg in
         --build-root=*)
             BUILD_ROOT="${arg#*=}"
+            ;;
+        --clean)
+            CLEAN_SOURCES=true
             ;;
     esac
 done
@@ -17,14 +21,29 @@ done
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-# Create directories if they don't exist
-mkdir -p "$SRC_DIR" "$PKG_DIR"
-
 # Package versions
 GCC_VERSION="15.1.0"
 BINUTILS_VERSION="2.44"
 GLIBC_VERSION="2.41"
 LINUX_VERSION="6.6.89"
+
+# Create directories if they don't exist
+mkdir -p "$SRC_DIR" "$PKG_DIR"
+
+# Clean sources if requested
+if [ "$CLEAN_SOURCES" = true ]; then
+    echo "Deleting $SRC_DIR/gcc-$GCC_VERSION"
+    rm -rf "$SRC_DIR/gcc-$GCC_VERSION"
+
+    echo "Deleting $SRC_DIR/binutils-$BINUTILS_VERSION"
+    rm -rf "$SRC_DIR/binutils-$BINUTILS_VERSION"
+
+    echo "Deleting $SRC_DIR/glibc-$GLIBC_VERSION"
+    rm -rf "$SRC_DIR/glibc-$GLIBC_VERSION"
+
+    echo "Deleting $SRC_DIR/linux-$LINUX_VERSION"
+    rm -rf "$SRC_DIR/linux-$LINUX_VERSION"
+fi
 
 # URLs
 GCC_URL="https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.gz"
@@ -48,7 +67,7 @@ download() {
 
     # Check if file exists and verify checksum
     if [ -f "$output" ]; then
-        echo -n "$(basename $output) already downloaded, verifying checksum..."
+        echo -n Verifying "$(basename $output)..."
         if echo "$expected_sha256 $output" | sha256sum -c - &>/dev/null; then
             echo " verified"
             checksum_ok=true
