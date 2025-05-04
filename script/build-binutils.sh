@@ -16,16 +16,14 @@ print_usage() {
     echo "  --help               Display this help message"
 }
 
-# Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Source common definitions
 source "$SCRIPT_DIR/common.sh"
 
 # Default values
-BUILD_ROOT="$ROOT_DIR"
-HOST=""
+BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
+SYSTEM_TRIPLE=$(gcc -dumpmachine)
+HOST="$SYSTEM_TRIPLE"
 TARGET=""
 CLEAN_BUILD=false
 BOOTSTRAP=false

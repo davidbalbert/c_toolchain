@@ -26,7 +26,7 @@ source "$SCRIPT_DIR/common.sh"
 BUILD_ROOT="$ROOT_DIR"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
-TARGET="$SYSTEM_TRIPLE"
+TARGET=""
 CLEAN_BUILD=false
 
 # Parse arguments
@@ -59,6 +59,11 @@ done
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
+# If target is not specified, default to host
+if [ -z "$TARGET" ]; then
+    TARGET="$HOST"
+fi
+
 # Versions are defined in common.sh
 
 # Set paths according to our directory structure
@@ -87,6 +92,8 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$LINUX_BUILD_DIR" ]; then
     echo "Cleaning $LINUX_BUILD_DIR..."
     rm -rf "$LINUX_BUILD_DIR"
 fi
+
+mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
