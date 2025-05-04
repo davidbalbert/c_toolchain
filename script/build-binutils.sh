@@ -92,7 +92,6 @@ if [ "$BOOTSTRAP" = "true" ]; then
 
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-    SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
 else
     BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
@@ -108,7 +107,6 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
 fi
 
 mkdir -p "$BINUTILS_BUILD_DIR"
-mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
@@ -121,7 +119,6 @@ echo "Bootstrap: $BOOTSTRAP"
 echo "Source: $SRC_DIR/binutils-$BINUTILS_VERSION"
 echo "Build: $BINUTILS_BUILD_DIR"
 echo "Prefix: $PREFIX"
-echo "Sysroot: $SYSROOT"
 echo
 
 # Change to build directory
@@ -131,17 +128,11 @@ cd "$BINUTILS_BUILD_DIR"
 echo "Configuring binutils..."
 "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
     --prefix="$PREFIX" \
-    --with-sysroot="$SYSROOT" \
     --host="$HOST" \
     --target="$TARGET" \
     --program-prefix="$TARGET-" \
     --enable-new-dtags \
-    --enable-static \
-    --disable-shared \
-    --disable-nls \
     --disable-werror \
-    --disable-multilib \
-    "CONFIG_SHELL=/bin/bash" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

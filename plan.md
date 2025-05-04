@@ -23,22 +23,21 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 │   ├── [other component scripts]
 ├── src/                 # Downloaded source code
 ├── build/               # Build directories
-│   ├── $HOST/           # Final toolchain build directories
+│   ├── bootstrap/
 │   │   └── $TARGET-gcc-$GCC_VERSION/
 │   │       ├── binutils/
 │   │       ├── gcc/
 │   │       └── [other components]
-│   └── bootstrap/
+│   └── $HOST/
 │       └── $TARGET-gcc-$GCC_VERSION/
 │           ├── binutils/
 │           ├── gcc/
 │           └── [other components]
-└── out/                 # Final output directories
-    ├── $HOST/
+└── out/                 # Output directories
+    ├── bootstrap/
     │   └── $TARGET-gcc-$GCC_VERSION/
-    │       |── toolchain/
-    |       └-- sysroot/
-    └── bootstrap
+    │       └── toolchain/
+    └── $HOST/
         └── $TARGET-gcc-$GCC_VERSION/
             |── toolchain/
             └-- sysroot/
@@ -47,16 +46,13 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 ## Directory Structure Explanation
 
 ### Build Directories
-- `build/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION/binutils/` - Final toolchain components
-- `build/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Final sysroot components
-- `build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION/binutils/` - Bootstrap components
-- `build/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Bootstrap sysroot components
+- `build/bootstrap/$TARGET-gcc-$GCC_VERSION/binutils/` - Bootstrap components
+- `build/$HOST/$TARGET-gcc-$GCC_VERSION/binutils/` - Final toolchain components
 
 ### Output Directories
-- `out/toolchains/$HOST/$TARGET-gcc-$GCC_VERSION/` - Final toolchains
-- `out/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Final sysroots
-- `out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION/` - Bootstrap toolchains
-- `out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION/` - Bootstrap sysroots
+- `out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain` - Bootstrap toolchain
+- `out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain` - Final toolchain
+- `out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot` - Final sysroot
 
 ### Key Variables
 - `$HOST` - Host architecture (where the compiler runs)
@@ -76,30 +72,29 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
    - glibc
    - Linux kernel
 
-3. **Build Binutils**
-   - Configure with static linking
-   - Install to temporary prefix
+3. **Build Bootstrap Binutils**
+   - Install to bootstrap prefix
+   - Depends on system libc, but will generate identical binaries to a hermetic version.
 
 4. **Build Bootstrap GCC**
-   - Build minimal GCC with C compiler only
-   - No dependencies on target libraries
+   - Install GCC dependencies (GMP, MPFR, MPC, ISL).
+   - Depends on system libc, but will generate identical binaries to a hermetic version.
 
-5. **Install Linux Kernel Headers**
-   - Prepare minimal kernel headers
+5. **Build Host Sysroot**
+   - `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
+   - Install kernel headers
+   - Install glibc
 
-6. **Build Minimal glibc Headers**
-   - Install C library headers only
+6. **Build Host Binutils**
+   - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
+   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
+   - Links against sysroot libc. As static as possible.
 
-7. **Build Bootstrap GCC with C++ Support**
-   - Enable C++ features
-   - Link against temporary glibc headers
-
-8. **Build Complete glibc**
-   - Build full C library against bootstrap compiler
-
-9. **Build Final GCC Toolchain**
-   - Complete compiler with all languages
-   - Statically linked against final glibc
+7. **Build Host GCC Toolchain**
+   - Install GCC dependencies (GMP, MPFR, MPC, ISL).
+   - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
+   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
+   - Links against sysroot libc. As static as possible.
 
 ## Cross-Compilation Strategy
 
@@ -127,7 +122,7 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
 2. ✅ Implement download script with checksums
 3. Implement individual component build scripts:
    - 3.1. ✅ Bootstrap Binutils
-   - 3.2. Bootstrap GCC
+   - 3.2. ✅ Bootstrap GCC
    - 3.3. Linux kernel headers
    - 3.4. bootstrap glibc
    - 3.5  libstdc++

@@ -81,7 +81,6 @@ fi
 
 BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
 PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 GCC_BUILD_DIR="$BUILD_DIR/gcc"
 
@@ -92,7 +91,6 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$GCC_BUILD_DIR" ]; then
 fi
 
 mkdir -p "$GCC_BUILD_DIR"
-mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
@@ -104,7 +102,6 @@ echo "Target: $TARGET"
 echo "Source: $SRC_DIR/gcc-$GCC_VERSION"
 echo "Build: $GCC_BUILD_DIR"
 echo "Prefix: $PREFIX"
-echo "Sysroot: $SYSROOT"
 echo
 
 # Check that binutils are installed in PREFIX
@@ -126,25 +123,10 @@ echo "Configuring bootstrap GCC..."
     --host="$HOST" \
     --target="$TARGET" \
     --prefix="$PREFIX" \
-    --with-glibc-version="$GLIBC_VERSION" \
     --with-gmp="$PREFIX" \
-    --with-sysroot="$SYSROOT" \
-    --with-newlib \
-    --without-headers \
     --enable-default-pie \
     --enable-default-ssp \
     --enable-static \
-    --disable-nls \
-    --disable-shared \
-    --disable-multilib \
-    --disable-threads \
-    --disable-libatomic \
-    --disable-libgomp \
-    --disable-libquadmath \
-    --disable-libssp \
-    --disable-libvtv \
-    --disable-libstdcxx \
-    --disable-bootstrap \
     --enable-languages=c,c++ \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
