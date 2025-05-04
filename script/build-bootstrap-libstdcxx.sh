@@ -5,7 +5,7 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build bootstrap GCC (C compiler only) for the specified target architecture."
+    echo "Build bootstrap libstdc++ for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
@@ -83,77 +83,64 @@ BUILD_DIR="$BUILD_ROOT/build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
 PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
 SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
 
-GCC_BUILD_DIR="$BUILD_DIR/gcc"
+LIBSTDCXX_BUILD_DIR="$BUILD_DIR/libstdcxx"
 
 # Clean build directory if requested
-if [ "$CLEAN_BUILD" = true ] && [ -d "$GCC_BUILD_DIR" ]; then
-    echo "Cleaning $GCC_BUILD_DIR..."
-    rm -rf "$GCC_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$LIBSTDCXX_BUILD_DIR" ]; then
+    echo "Cleaning $LIBSTDCXX_BUILD_DIR..."
+    rm -rf "$LIBSTDCXX_BUILD_DIR"
 fi
 
-mkdir -p "$GCC_BUILD_DIR"
+mkdir -p "$LIBSTDCXX_BUILD_DIR"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building bootstrap GCC-$GCC_VERSION"
+echo "Building bootstrap libstdc++"
 echo "Host: $HOST"
 echo "Target: $TARGET"
-echo "Source: $SRC_DIR/gcc-$GCC_VERSION"
-echo "Build: $GCC_BUILD_DIR"
+echo "Source: $SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3"
+echo "Build: $LIBSTDCXX_BUILD_DIR"
 echo "Prefix: $PREFIX"
 echo "Sysroot: $SYSROOT"
 echo
 
-# Check that binutils are installed in PREFIX
-if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
-    echo "Error: Binutils not found in $PREFIX"
-    echo "Please build binutils first using scripts/build-binutils.sh --bootstrap"
+# Check that bootstrap GCC is installed in PREFIX
+if [ ! -x "$PREFIX/bin/$TARGET-gcc" ]; then
+    echo "Error: Bootstrap GCC not found in $PREFIX"
+    echo "Please build bootstrap GCC first using scripts/build-bootstrap-gcc.sh"
     exit 1
 fi
 
-# Add binutils to PATH
+# Add the bootstrap toolchain to PATH
 export PATH="$PREFIX/bin:$PATH"
 
 # Change to build directory
-cd "$GCC_BUILD_DIR"
+cd "$LIBSTDCXX_BUILD_DIR"
 
-# Configure GCC
-echo "Configuring bootstrap GCC..."
-"$SRC_DIR/gcc-$GCC_VERSION/configure" \
+# Configure libstdc++-v3
+echo "Configuring bootstrap libstdc++..."
+"$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3/configure" \
+    --build="$SYSTEM_TRIPLE" \
     --host="$HOST" \
     --target="$TARGET" \
-    --prefix="$PREFIX" \
-    --with-glibc-version="$GLIBC_VERSION" \
-    --with-gmp="$PREFIX" \
-    --with-sysroot="$SYSROOT" \
-    --with-newlib \
-    --without-headers \
-    --enable-default-pie \
-    --enable-default-ssp \
-    --enable-static \
-    --disable-nls \
-    --disable-shared \
+    --prefix=/usr \
     --disable-multilib \
-    --disable-threads \
-    --disable-libatomic \
-    --disable-libgomp \
-    --disable-libquadmath \
-    --disable-libssp \
-    --disable-libvtv \
-    --disable-libstdcxx \
-    --disable-bootstrap \
-    --enable-languages=c,c++ \
+    --disable-nls \
+    --disable-libstdcxx-pch \
+    --disable-shared \
+    --enable-static \
+    --with-gxx-include-dir="$TARGET/include/c++/$GCC_VERSION" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-# Build GCC
-echo "Building bootstrap GCC..."
+# Build libstdc++
+echo "Building bootstrap libstdc++..."
 make -j$(nproc)
 
-echo "Installing bootstrap GCC..."
-make install
+echo "Installing bootstrap libstdc++..."
+make DESTDIR="$SYSROOT" install
 
-echo "Bootstrap GCC build complete. Installed to $PREFIX"
+echo "Bootstrap libstdc++ build complete. Installed to $PREFIX"
