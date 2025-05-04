@@ -23,36 +23,25 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 │   ├── [other component scripts]
 ├── src/                 # Downloaded source code
 ├── build/               # Build directories
-│   ├── toolchains/      # Final toolchain build directories
-│   │   └── $HOST/
-│   │       └── $TARGET-gcc-$GCC_VERSION/
-│   │           ├── binutils/
-│   │           ├── gcc/
-│   │           └── [other components]
-│   ├── sysroots/        # Final sysroot build directories
-│   │   └── $TARGET-glibc-$GLIBC_VERSION/
-│   │       ├── kernel-headers/
-│   │       ├── glibc/
+│   ├── $HOST/           # Final toolchain build directories
+│   │   └── $TARGET-gcc-$GCC_VERSION/
+│   │       ├── binutils/
+│   │       ├── gcc/
 │   │       └── [other components]
-│   └── bootstrap/       # Bootstrap build directories
-│       ├── toolchains/
-│       │   └── $TARGET-gcc-$GCC_VERSION/
-│       │       ├── binutils/
-│       │       ├── gcc/
-│       │       └── [other components]
-│       └── sysroots/
-│           └── $TARGET-glibc-$GLIBC_VERSION/
+│   └── bootstrap/
+│       └── $TARGET-gcc-$GCC_VERSION/
+│           ├── binutils/
+│           ├── gcc/
+│           └── [other components]
 └── out/                 # Final output directories
-    ├── toolchains/      # Final toolchains
-    │   └── $HOST/
-    │       └── $TARGET-gcc-$GCC_VERSION/
-    ├── sysroots/        # Final sysroots
-    │   └── $TARGET-glibc-$GLIBC_VERSION/
-    └── bootstrap/       # Bootstrap artifacts
-        ├── toolchains/
-        │   └── $TARGET-gcc-$GCC_VERSION/
-        └── sysroots/
-            └── $TARGET-glibc-$GLIBC_VERSION/
+    ├── $HOST/
+    │   └── $TARGET-gcc-$GCC_VERSION/
+    │       |── toolchain/
+    |       └-- sysroot/
+    └── bootstrap
+        └── $TARGET-gcc-$GCC_VERSION/
+            |── toolchain/
+            └-- sysroot/
 ```
 
 ## Directory Structure Explanation
