@@ -79,9 +79,9 @@ elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
     exit 1
 fi
 
-BUILD_DIR="$BUILD_ROOT/build/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
-PREFIX="$BUILD_ROOT/out/bootstrap/toolchains/$TARGET-gcc-$GCC_VERSION"
-SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
+BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
+PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 GCC_BUILD_DIR="$BUILD_DIR/gcc"
 

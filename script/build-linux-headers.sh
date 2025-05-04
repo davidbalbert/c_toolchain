@@ -78,11 +78,11 @@ if [ "$BOOTSTRAP" = "true" ]; then
         exit 1
     fi
 
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/bootstrap/sysroots/$TARGET-glibc-$GLIBC_VERSION"
+    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
+    SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
 else
-    BUILD_DIR="$BUILD_ROOT/build/sysroots/$TARGET-glibc-$GLIBC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/sysroots/$TARGET-glibc-$GLIBC_VERSION"
+    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
+    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 fi
 
 LINUX_BUILD_DIR="$BUILD_DIR/linux-headers"

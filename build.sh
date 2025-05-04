@@ -2,7 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_DIR="$ROOT_DIR/scripts"
+SCRIPT_DIR="$ROOT_DIR/script"
+
+# Source common definitions
+source "$SCRIPT_DIR/common.sh"
 
 TARGET=""
 HOST=""
@@ -67,7 +70,10 @@ if [[ "$BUILD_ROOT" == "/tmp"* ]]; then
 fi
 
 # Create directories
-mkdir -p "$SRC_DIR" "$BUILD_DIR" "$OUT_DIR" "$PKG_DIR"
+mkdir -p "$SRC_DIR" "$PKG_DIR"
+mkdir -p "$BUILD_DIR/$HOST/$TARGET-gcc-$GCC_VERSION"
+mkdir -p "$OUT_DIR/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+mkdir -p "$OUT_DIR/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 # Download sources if needed
 if [ ! -d "$SRC_DIR/binutils-"* ] || [ ! -d "$SRC_DIR/gcc-"* ]; then
@@ -76,7 +82,8 @@ if [ ! -d "$SRC_DIR/binutils-"* ] || [ ! -d "$SRC_DIR/gcc-"* ]; then
 fi
 
 # Output prefix
-PREFIX="$OUT_DIR/$TARGET"
+TOOLCHAIN_PREFIX="$OUT_DIR/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+SYSROOT_PREFIX="$OUT_DIR/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 # Build the toolchain components
 echo "Building toolchain for target: $TARGET"
@@ -87,4 +94,5 @@ echo "Output: $OUT_DIR"
 
 # Component builds will be added here
 
-echo "Build complete. Toolchain is available at: $PREFIX"
+echo "Build complete. Toolchain is available at: $TOOLCHAIN_PREFIX"
+echo "Sysroot is available at: $SYSROOT_PREFIX"
