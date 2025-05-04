@@ -137,14 +137,14 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
 1. ✅ Create directory structure
 2. ✅ Implement download script with checksums
 3. Implement individual component build scripts:
-   - 3.1. ✅ Binutils (bootstrap)
-   - 3.2. Bootstrap GCC (C only)
+   - 3.1. ✅ Bootstrap Binutils
+   - 3.2. Bootstrap GCC
    - 3.3. Linux kernel headers
-   - 3.4. Minimal glibc headers
-   - 3.5. Bootstrap GCC with C++ support
-   - 3.6. Complete glibc
-   - 3.7. Binutils (final)
-   - 3.8. Final GCC toolchain
+   - 3.4. bootstrap glibc
+   - 3.5  libstdc++
+   - 3.6. Binutils (final)
+   - 3.7. GCC (final)
+   - 3.8. glibc
 4. Create main orchestration script
 5. Test aarch64 → aarch64 build
 6. Verify reproducibility

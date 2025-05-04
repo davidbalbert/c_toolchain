@@ -132,7 +132,6 @@ echo "Configuring bootstrap libstdc++..."
     --disable-libstdcxx-pch \
     --disable-shared \
     --enable-static \
-    --with-gxx-include-dir="$TARGET/include/c++/$GCC_VERSION" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
