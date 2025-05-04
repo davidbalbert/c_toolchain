@@ -9,9 +9,9 @@ print_usage() {
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
-    echo "  --target=TRIPLE      Set the target architecture triple"
+    echo "  --host=TRIPLE        Set the host architecture triple (default: $(gcc -dumpmachine))"
+    echo "  --target=TRIPLE      Set the target architecture triple (default: $(gcc -dumpmachine))"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build bootstrap kernel headers using the system compiler"
     echo "  --help               Display this help message"
 }
 
@@ -24,9 +24,10 @@ source "$SCRIPT_DIR/common.sh"
 
 # Default values
 BUILD_ROOT="$ROOT_DIR"
-TARGET=""
+SYSTEM_TRIPLE=$(gcc -dumpmachine)
+HOST="$SYSTEM_TRIPLE"
+TARGET="$SYSTEM_TRIPLE"
 CLEAN_BUILD=false
-BOOTSTRAP=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -40,8 +41,8 @@ for arg in "$@"; do
         --clean)
             CLEAN_BUILD=true
             ;;
-        --bootstrap)
-            BOOTSTRAP=true
+        --host=*)
+            HOST="${arg#*=}"
             ;;
         --help)
             print_usage
@@ -58,32 +59,11 @@ done
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Error: Currently only bootstrap builds are supported (--bootstrap)"
-    exit 1
-fi
-
 # Versions are defined in common.sh
 
-SYSTEM_TRIPLE=$(gcc -dumpmachine)
-echo "Detected system: $SYSTEM_TRIPLE"
-
 # Set paths according to our directory structure
-if [ "$BOOTSTRAP" = "true" ]; then
-    # In bootstrap mode, target must be the current system triple
-    if [ -z "$TARGET" ]; then
-        TARGET="$SYSTEM_TRIPLE"
-    elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-        echo "Error: with --bootstrap, --target must be ($SYSTEM_TRIPLE)"
-        exit 1
-    fi
-
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
-else
-    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
-    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
-fi
+BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
+SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 LINUX_BUILD_DIR="$BUILD_DIR/linux-headers"
 
@@ -112,10 +92,10 @@ fi
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+echo "Detected system: $SYSTEM_TRIPLE"
 echo "Installing Linux kernel headers $LINUX_VERSION"
 echo "Target architecture: $TARGET_ARCH (kernel: $KERNEL_ARCH)"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source: $SRC_DIR/linux-$LINUX_VERSION"
+echo "Source:  $SRC_DIR/linux-$LINUX_VERSION"
 echo "Sysroot: $SYSROOT"
 echo
 
