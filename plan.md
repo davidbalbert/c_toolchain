@@ -84,16 +84,19 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
    - `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
    - Install kernel headers
    - Install glibc
+   - Symlink `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot` -> `../sysroot`
+      - Having the sysroot nested inside GCC's prefix will make GCC use a relative path,
+        letting us move the toolchain around.
 
 6. **Build Host Binutils**
    - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
-   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
+   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot`
    - Links against sysroot libc. As static as possible.
 
 7. **Build Host GCC Toolchain**
    - Install GCC dependencies (GMP, MPFR, MPC, ISL).
    - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
-   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
+   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot`
    - Links against sysroot libc. As static as possible.
 
 ## Cross-Compilation Strategy
