@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Print usage information
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
@@ -28,7 +27,6 @@ TARGET=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
 
-# Parse arguments
 for arg in "$@"; do
     case $arg in
         --build-root=*)
@@ -58,32 +56,22 @@ for arg in "$@"; do
     esac
 done
 
-SRC_DIR="$BUILD_ROOT/src"
-PKG_DIR="$BUILD_ROOT/pkg"
-
-if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Error: Currently only bootstrap builds are supported (--bootstrap)"
-    exit 1
+if [ -z "$TARGET" ]; then
+    TARGET="$HOST"
 fi
 
-# Versions are defined in common.sh
+SRC_DIR="$BUILD_ROOT/src"
+PKG_DIR="$BUILD_ROOT/pkg"
 
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 echo "Detected system: $SYSTEM_TRIPLE"
 
-# Set paths according to our directory structure
 if [ "$BOOTSTRAP" = "true" ]; then
-    # In bootstrap mode, host and target must be the current system triple
-    if [ -z "$HOST" ]; then
-        HOST="$SYSTEM_TRIPLE"
-    elif [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
+    if [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
         echo "Error: with --bootstrap, --host must be ($SYSTEM_TRIPLE)"
         exit 1
     fi
-
-    if [ -z "$TARGET" ]; then
-        TARGET="$SYSTEM_TRIPLE"
-    elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
+    if [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
         echo "Error: with --bootstrap, --target must be ($SYSTEM_TRIPLE)"
         exit 1
     fi
@@ -119,18 +107,35 @@ echo "Build: $BINUTILS_BUILD_DIR"
 echo "Prefix: $PREFIX"
 echo
 
-# Change to build directory
 cd "$BINUTILS_BUILD_DIR"
 
-# Configure binutils
+mkdir -p "$PREFIX"
+
+if [ "$BOOTSTRAP" != "true" ]; then
+    mkdir -p "$SYSROOT"
+    ln -sf "../sysroot" "$PREFIX/sysroot"
+fi
+
 echo "Configuring binutils..."
+
+CONFIGURE_OPTIONS=(
+    "--prefix=$PREFIX"
+    "--host=$HOST"
+    "--target=$TARGET"
+    "--program-prefix=$TARGET-"
+    "--enable-new-dtags"
+    "--disable-werror"
+)
+
+# Add sysroot options for non-bootstrap builds
+if [ "$BOOTSTRAP" != "true" ]; then
+    echo "Using sysroot: $SYSROOT"
+    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
+    CONFIGURE_OPTIONS+=("--disable-shared")
+fi
+
 "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
-    --prefix="$PREFIX" \
-    --host="$HOST" \
-    --target="$TARGET" \
-    --program-prefix="$TARGET-" \
-    --enable-new-dtags \
-    --disable-werror \
+    "${CONFIGURE_OPTIONS[@]}" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
@@ -141,4 +146,8 @@ make -j$(nproc)
 echo "Installing binutils..."
 make install
 
-echo "Binutils bootstrap build complete. Installed to $PREFIX"
+if [ "$BOOTSTRAP" = "true" ]; then
+    echo "Binutils bootstrap build complete. Installed to $PREFIX"
+else
+    echo "Binutils build complete. Installed to $PREFIX"
+fi
