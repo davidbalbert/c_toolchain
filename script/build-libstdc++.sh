@@ -130,8 +130,6 @@ echo "Configuring bootstrap libstdc++..."
     --disable-multilib \
     --disable-nls \
     --disable-libstdcxx-pch \
-    --disable-shared \
-    --enable-static \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

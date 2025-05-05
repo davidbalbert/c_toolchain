@@ -12,7 +12,7 @@ print_usage() {
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build bootstrap binutils using the system compiler"
+    echo "  --bootstrap          Build bootstrap gcc using the system compiler"
     echo "  --help               Display this help message"
 }
 
@@ -115,7 +115,7 @@ fi
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-# export PATH="$PREFIX/bin:$PATH"
+export PATH="$PREFIX/bin:$PATH"
 
 if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
     echo "Error: Binutils not found in $PREFIX"
@@ -155,6 +155,7 @@ echo "Configuring GCC..."
     --disable-libvtv \
     --disable-libstdcxx \
     --disable-bootstrap \
+    --enable-languages=c,c++ \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

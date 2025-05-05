@@ -101,7 +101,7 @@ cd "$GMP_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-# export PATH="$PREFIX/bin:$PATH"
+export PATH="$PREFIX/bin:$PATH"
 
 echo "Building gmp-$GMP_VERSION"
 echo "Host:   $HOST"

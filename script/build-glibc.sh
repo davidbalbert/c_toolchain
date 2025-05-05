@@ -12,6 +12,7 @@ print_usage() {
     echo "  --host=TRIPLE        Set the host architecture triple (default: system triple)"
     echo "  --target=TRIPLE      Set the target architecture triple (default: same as host)"
     echo "  --clean              Clean the build directory before building"
+    echo "  --bootstrap          Build glibc using the bootstrap compiler"
     echo "  --help               Display this help message"
 }
 
@@ -24,6 +25,7 @@ BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET=""
+BOOTSTRAP=false
 CLEAN_BUILD=false
 
 for arg in "$@"; do
@@ -36,6 +38,9 @@ for arg in "$@"; do
             ;;
         --target=*)
             TARGET="${arg#*=}"
+            ;;
+        --bootstrap)
+            BOOTSTRAP=true
             ;;
         --clean)
             CLEAN_BUILD=true
@@ -56,6 +61,13 @@ if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
+if [ "BOOTSTRAP" = true ]; then
+    PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+else
+    PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+fi
+
+
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
@@ -75,6 +87,8 @@ mkdir -p "$SYSROOT"
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
+
+export PATH="$PREFIX/bin:$PATH"
 
 echo "Building glibc $GLIBC_VERSION"
 echo "Source: $SRC_DIR/glibc-$GLIBC_VERSION"

@@ -101,7 +101,7 @@ cd "$MPFR_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-# export PATH="$PREFIX/bin:$PATH"
+export PATH="$PREFIX/bin:$PATH"
 
 echo "Building mpfr-$MPFR_VERSION"
 echo "Host:   $HOST"
