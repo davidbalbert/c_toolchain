@@ -16,21 +16,18 @@ print_usage() {
     echo "  --help               Display this help message"
 }
 
-# Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Source common definitions
 source "$SCRIPT_DIR/common.sh"
 
 # Default values
-BUILD_ROOT="$ROOT_DIR"
-HOST=""
+BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
+SYSTEM_TRIPLE=$(gcc -dumpmachine)
+HOST="$SYSTEM_TRIPLE"
 TARGET=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
 
-# Parse arguments
+
 for arg in "$@"; do
     case $arg in
         --build-root=*)
@@ -60,6 +57,10 @@ for arg in "$@"; do
     esac
 done
 
+if [ -z "$TARGET" ]; then
+    TARGET="$HOST"
+fi
+
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
@@ -68,24 +69,13 @@ if [ "$BOOTSTRAP" != "true" ]; then
     exit 1
 fi
 
-# Versions are defined in common.sh
-
-SYSTEM_TRIPLE=$(gcc -dumpmachine)
-echo "Detected system: $SYSTEM_TRIPLE"
-
-# Set paths according to our directory structure
 if [ "$BOOTSTRAP" = "true" ]; then
     # In bootstrap mode, host and target must be the current system triple
-    if [ -z "$HOST" ]; then
-        HOST="$SYSTEM_TRIPLE"
-    elif [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
+    if [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
         echo "Error: with --bootstrap, --host must be ($SYSTEM_TRIPLE)"
         exit 1
     fi
-
-    if [ -z "$TARGET" ]; then
-        TARGET="$SYSTEM_TRIPLE"
-    elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
+    if [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
         echo "Error: with --bootstrap, --target must be ($SYSTEM_TRIPLE)"
         exit 1
     fi
@@ -99,32 +89,27 @@ fi
 
 ISL_BUILD_DIR="$BUILD_DIR/isl"
 
-# Clean build directory if requested
 if [ "$CLEAN_BUILD" = true ] && [ -d "$ISL_BUILD_DIR" ]; then
     echo "Cleaning $ISL_BUILD_DIR..."
     rm -rf "$ISL_BUILD_DIR"
 fi
 
-# Create build directory
 mkdir -p "$ISL_BUILD_DIR"
+cd "$ISL_BUILD_DIR"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
 echo "Building isl-$ISL_VERSION"
-echo "Host: $HOST"
-echo "Target: $TARGET"
+echo "Host:      $HOST"
+echo "Target:    $TARGET"
 echo "Bootstrap: $BOOTSTRAP"
-echo "Source: $SRC_DIR/isl-$ISL_VERSION"
-echo "Build: $ISL_BUILD_DIR"
-echo "Prefix: $PREFIX"
+echo "Source:    $SRC_DIR/isl-$ISL_VERSION"
+echo "Build:     $ISL_BUILD_DIR"
+echo "Prefix:    $PREFIX"
 echo
 
-# Change to build directory
-cd "$ISL_BUILD_DIR"
-
-# Configure ISL
 echo "Configuring ISL..."
 "$SRC_DIR/isl-$ISL_VERSION/configure" \
     --build="$HOST" \
@@ -133,15 +118,13 @@ echo "Configuring ISL..."
     --disable-shared \
     --enable-static \
     --with-gmp-prefix="$PREFIX" \
-    "CONFIG_SHELL=/bin/bash" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-# Build and install ISL
 echo "Building ISL..."
 make -j$(nproc)
 
 echo "Installing ISL..."
 make install
 
-echo "ISL bootstrap build complete. Installed to $PREFIX"
+echo "ISL installed to $PREFIX"

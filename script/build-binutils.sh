@@ -86,7 +86,6 @@ fi
 
 BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
 
-# Clean build directory if requested
 if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
     echo "Cleaning $BINUTILS_BUILD_DIR..."
     rm -rf "$BINUTILS_BUILD_DIR"
@@ -134,7 +133,6 @@ if [ "$BOOTSTRAP" != "true" ]; then
     ln -sf "../sysroot" "$PREFIX/sysroot"
 fi
 
-# Add sysroot options for non-bootstrap builds
 if [ "$BOOTSTRAP" != "true" ]; then
     CONFIGURE_OPTIONS+=("--disable-shared")
 fi
@@ -144,15 +142,10 @@ fi
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-# Build and install binutils
 echo "Building binutils..."
 make -j$(nproc)
 
 echo "Installing binutils..."
 make install
 
-if [ "$BOOTSTRAP" = "true" ]; then
-    echo "Binutils bootstrap build complete. Installed to $PREFIX"
-else
-    echo "Binutils build complete. Installed to $PREFIX"
-fi
+echo "Binutils installed to $PREFIX"
