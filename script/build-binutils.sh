@@ -64,7 +64,6 @@ SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
-echo "Detected system: $SYSTEM_TRIPLE"
 
 if [ "$BOOTSTRAP" = "true" ]; then
     if [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
@@ -78,10 +77,11 @@ if [ "$BOOTSTRAP" = "true" ]; then
 
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 else
     BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
-    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
+    SYSROOT="$PREFIX/sysroot"
 fi
 
 BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
@@ -99,38 +99,43 @@ export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
 echo "Building binutils-$BINUTILS_VERSION"
-echo "Host: $HOST"
-echo "Target: $TARGET"
+echo "Host:      $HOST"
+echo "Target:    $TARGET"
 echo "Bootstrap: $BOOTSTRAP"
-echo "Source: $SRC_DIR/binutils-$BINUTILS_VERSION"
-echo "Build: $BINUTILS_BUILD_DIR"
-echo "Prefix: $PREFIX"
+echo "Source:    $SRC_DIR/binutils-$BINUTILS_VERSION"
+echo "Build:     $BINUTILS_BUILD_DIR"
+echo "Prefix:    $PREFIX"
+echo "Sysroot:   $SYSROOT"
 echo
 
 cd "$BINUTILS_BUILD_DIR"
 
 mkdir -p "$PREFIX"
-
-if [ "$BOOTSTRAP" != "true" ]; then
-    mkdir -p "$SYSROOT"
-    ln -sf "../sysroot" "$PREFIX/sysroot"
-fi
-
-echo "Configuring binutils..."
+mkdir -p "$SYSROOT"
 
 CONFIGURE_OPTIONS=(
     "--prefix=$PREFIX"
     "--host=$HOST"
     "--target=$TARGET"
+    "--with-sysroot=$SYSROOT"
     "--program-prefix=$TARGET-"
     "--enable-new-dtags"
     "--disable-werror"
 )
 
+if [ "$BOOTSTRAP" != "true" ]; then
+    # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
+    # with a sysroot inside its prefix, it uses relative paths, which means the toolchain
+    # can be moved around. Not sure if binutils does the same thing, but it can't hurt
+    # to try.
+    #
+    # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
+    # because its clearer what's going on.
+    ln -sf "../sysroot" "$PREFIX/sysroot"
+fi
+
 # Add sysroot options for non-bootstrap builds
 if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Using sysroot: $SYSROOT"
-    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--disable-shared")
 fi
 
