@@ -101,13 +101,15 @@ cd "$MPFR_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+# export PATH="$PREFIX/bin:$PATH"
+
 echo "Building mpfr-$MPFR_VERSION"
-echo "Host:      $HOST"
-echo "Target:    $TARGET"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source:    $SRC_DIR/mpfr-$MPFR_VERSION"
-echo "Build:     $MPFR_BUILD_DIR"
-echo "Prefix:    $PREFIX"
+echo "Host:   $HOST"
+echo "Target: $TARGET"
+echo "Source: $SRC_DIR/mpfr-$MPFR_VERSION"
+echo "Build:  $MPFR_BUILD_DIR"
+echo "Prefix: $PREFIX"
+echo "Path:   $PATH"
 echo
 
 echo "Configuring MPFR..."
@@ -117,7 +119,6 @@ echo "Configuring MPFR..."
     --prefix="$PREFIX" \
     --disable-shared \
     --with-gmp="$PREFIX" \
-    "CONFIG_SHELL=/bin/bash" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

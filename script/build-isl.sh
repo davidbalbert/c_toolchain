@@ -101,13 +101,15 @@ cd "$ISL_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+# export PATH="$PREFIX/bin:$PATH"
+
 echo "Building isl-$ISL_VERSION"
-echo "Host:      $HOST"
-echo "Target:    $TARGET"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source:    $SRC_DIR/isl-$ISL_VERSION"
-echo "Build:     $ISL_BUILD_DIR"
-echo "Prefix:    $PREFIX"
+echo "Host:   $HOST"
+echo "Target: $TARGET"
+echo "Source: $SRC_DIR/isl-$ISL_VERSION"
+echo "Build:  $ISL_BUILD_DIR"
+echo "Prefix: $PREFIX"
+echo "Path:   $PATH"
 echo
 
 echo "Configuring ISL..."
@@ -116,7 +118,6 @@ echo "Configuring ISL..."
     --host="$HOST" \
     --prefix="$PREFIX" \
     --disable-shared \
-    --enable-static \
     --with-gmp-prefix="$PREFIX" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."

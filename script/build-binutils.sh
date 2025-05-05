@@ -16,7 +16,6 @@ print_usage() {
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 source "$SCRIPT_DIR/common.sh"
 
 # Default values
@@ -97,30 +96,21 @@ mkdir -p "$BINUTILS_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+export PATH="$PREFIX/bin:$PATH"
+
 echo "Building binutils-$BINUTILS_VERSION"
-echo "Host:      $HOST"
-echo "Target:    $TARGET"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source:    $SRC_DIR/binutils-$BINUTILS_VERSION"
-echo "Build:     $BINUTILS_BUILD_DIR"
-echo "Prefix:    $PREFIX"
-echo "Sysroot:   $SYSROOT"
+echo "Host:    $HOST"
+echo "Target:  $TARGET"
+echo "Source:  $SRC_DIR/binutils-$BINUTILS_VERSION"
+echo "Build:   $BINUTILS_BUILD_DIR"
+echo "Prefix:  $PREFIX"
+echo "Sysroot: $SYSROOT"
+echo "Path:    $PATH"
 echo
 
 cd "$BINUTILS_BUILD_DIR"
 
 mkdir -p "$PREFIX"
-mkdir -p "$SYSROOT"
-
-CONFIGURE_OPTIONS=(
-    "--prefix=$PREFIX"
-    "--host=$HOST"
-    "--target=$TARGET"
-    "--with-sysroot=$SYSROOT"
-    "--program-prefix=$TARGET-"
-    "--enable-new-dtags"
-    "--disable-werror"
-)
 
 if [ "$BOOTSTRAP" != "true" ]; then
     # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
@@ -132,6 +122,16 @@ if [ "$BOOTSTRAP" != "true" ]; then
     # because its clearer what's going on.
     ln -sf "../sysroot" "$PREFIX/sysroot"
 fi
+
+CONFIGURE_OPTIONS=(
+    "--prefix=$PREFIX"
+    "--host=$HOST"
+    "--target=$TARGET"
+    "--with-sysroot=$SYSROOT"
+    "--program-prefix=$TARGET-"
+    "--enable-new-dtags"
+    "--disable-werror"
+)
 
 if [ "$BOOTSTRAP" != "true" ]; then
     CONFIGURE_OPTIONS+=("--disable-shared")

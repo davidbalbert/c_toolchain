@@ -101,13 +101,15 @@ cd "$GMP_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+# export PATH="$PREFIX/bin:$PATH"
+
 echo "Building gmp-$GMP_VERSION"
-echo "Host:      $HOST"
-echo "Target:    $TARGET"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source:    $SRC_DIR/gmp-$GMP_VERSION"
-echo "Build:     $GMP_BUILD_DIR"
-echo "Prefix:    $PREFIX"
+echo "Host:   $HOST"
+echo "Target: $TARGET"
+echo "Source: $SRC_DIR/gmp-$GMP_VERSION"
+echo "Build:  $GMP_BUILD_DIR"
+echo "Prefix: $PREFIX"
+echo "Path:   $PATH"
 echo
 
 echo "Configuring GMP..."

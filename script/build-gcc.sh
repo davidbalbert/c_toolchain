@@ -12,21 +12,20 @@ print_usage() {
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
+    echo "  --bootstrap          Build bootstrap binutils using the system compiler"
     echo "  --help               Display this help message"
 }
 
-# Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Source common definitions
 source "$SCRIPT_DIR/common.sh"
 
 # Default values
-BUILD_ROOT="$ROOT_DIR"
-HOST=""
+BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
+SYSTEM_TRIPLE=$(gcc -dumpmachine)
+HOST="$SYSTEM_TRIPLE"
 TARGET=""
 CLEAN_BUILD=false
+BOOTSTRAP=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -43,6 +42,9 @@ for arg in "$@"; do
         --clean)
             CLEAN_BUILD=true
             ;;
+        --bootstrap)
+            BOOTSTRAP=true
+            ;;
         --help)
             print_usage
             exit 0
@@ -55,79 +57,104 @@ for arg in "$@"; do
     esac
 done
 
+if [ -z "$TARGET" ]; then
+    TARGET="$HOST"
+fi
+
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-# Versions are defined in common.sh
-
-SYSTEM_TRIPLE=$(gcc -dumpmachine)
-echo "Detected system: $SYSTEM_TRIPLE"
-
-# We only support bootstrap builds for now
-# In bootstrap mode, host and target must be the current system triple
-if [ -z "$HOST" ]; then
-    HOST="$SYSTEM_TRIPLE"
-elif [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: for bootstrap, --host must be ($SYSTEM_TRIPLE)"
+if [ "$BOOTSTRAP" != "true" ]; then
+    echo "Error: Currently only bootstrap builds are supported (--bootstrap)"
     exit 1
 fi
 
-if [ -z "$TARGET" ]; then
-    TARGET="$SYSTEM_TRIPLE"
-elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: for bootstrap, --target must be ($SYSTEM_TRIPLE)"
-    exit 1
-fi
+if [ "$BOOTSTRAP" = "true" ]; then
+    # In bootstrap mode, host and target must be the current system triple
+    if [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
+        echo "Error: with --bootstrap, --host must be ($SYSTEM_TRIPLE)"
+        exit 1
+    fi
+    if [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
+        echo "Error: with --bootstrap, --target must be ($SYSTEM_TRIPLE)"
+        exit 1
+    fi
 
-BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
+    PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
+else
+    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
+    PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+    SYSROOT="$PREFIX/sysroot"
+fi
 
 GCC_BUILD_DIR="$BUILD_DIR/gcc"
 
-# Clean build directory if requested
 if [ "$CLEAN_BUILD" = true ] && [ -d "$GCC_BUILD_DIR" ]; then
     echo "Cleaning $GCC_BUILD_DIR..."
     rm -rf "$GCC_BUILD_DIR"
 fi
 
 mkdir -p "$GCC_BUILD_DIR"
+cd "$GCC_BUILD_DIR"
+
+mkdir -p "$PREFIX"
+
+if [ "$BOOTSTRAP" != "true" ]; then
+    # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
+    # with a sysroot inside its prefix, it uses relative paths, which means the toolchain
+    # can be moved around.
+    #
+    # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
+    # because its clearer what's going on.
+    ln -sf "../sysroot" "$PREFIX/sysroot"
+fi
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building bootstrap GCC-$GCC_VERSION"
-echo "Host: $HOST"
-echo "Target: $TARGET"
-echo "Source: $SRC_DIR/gcc-$GCC_VERSION"
-echo "Build: $GCC_BUILD_DIR"
-echo "Prefix: $PREFIX"
-echo
+# export PATH="$PREFIX/bin:$PATH"
 
-# Check that binutils are installed in PREFIX
 if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
     echo "Error: Binutils not found in $PREFIX"
     echo "Please build binutils first using scripts/build-binutils.sh --bootstrap"
     exit 1
 fi
 
-# Add binutils to PATH
-export PATH="$PREFIX/bin:$PATH"
+echo "Building gcc-$GCC_VERSION"
+echo "Host:   $HOST"
+echo "Target: $TARGET"
+echo "Source: $SRC_DIR/gcc-$GCC_VERSION"
+echo "Build:  $GCC_BUILD_DIR"
+echo "Prefix: $PREFIX"
+echo "Path:   $PATH"
+echo
 
-# Change to build directory
-cd "$GCC_BUILD_DIR"
-
-# Configure GCC
-echo "Configuring bootstrap GCC..."
+echo "Configuring GCC..."
 "$SRC_DIR/gcc-$GCC_VERSION/configure" \
     --host="$HOST" \
     --target="$TARGET" \
     --prefix="$PREFIX" \
+    --with-glibc-version="$GLIBC_VERSION" \
+    --with-sysroot="$SYSROOT" \
+    --with-newlib \
+    --without-headers \
     --with-gmp="$PREFIX" \
     --enable-default-pie \
     --enable-default-ssp \
-    --enable-static \
-    --enable-languages=c,c++ \
+    --disable-nls \
+    --disable-shared \
+    --disable-multilib \
+    --disable-threads \
+    --disable-libatomic \
+    --disable-libgomp \
+    --disable-libquadmath \
+    --disable-libssp \
+    --disable-libvtv \
+    --disable-libstdcxx \
+    --disable-bootstrap \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

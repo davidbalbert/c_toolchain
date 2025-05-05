@@ -101,13 +101,15 @@ cd "$MPC_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+# export PATH="$PREFIX/bin:$PATH"
+
 echo "Building mpc-$MPC_VERSION"
-echo "Host:      $HOST"
-echo "Target:    $TARGET"
-echo "Bootstrap: $BOOTSTRAP"
-echo "Source:    $SRC_DIR/mpc-$MPC_VERSION"
-echo "Build:     $MPC_BUILD_DIR"
-echo "Prefix:    $PREFIX"
+echo "Host:   $HOST"
+echo "Target: $TARGET"
+echo "Source: $SRC_DIR/mpc-$MPC_VERSION"
+echo "Build:  $MPC_BUILD_DIR"
+echo "Prefix: $PREFIX"
+echo "Path:   $PATH"
 echo
 
 echo "Configuring MPC..."
