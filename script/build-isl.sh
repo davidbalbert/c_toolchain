@@ -11,6 +11,7 @@ print_usage() {
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
+    echo "  --toolchain-path=DIR Path to bootstrap toolchain directory"
     echo "  --clean              Clean the build directory before building"
     echo "  --bootstrap          Build bootstrap ISL using the system compiler"
     echo "  --help               Display this help message"
@@ -24,6 +25,7 @@ BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET=""
+TOOLCHAIN_PATH=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
 
@@ -38,6 +40,9 @@ for arg in "$@"; do
             ;;
         --target=*)
             TARGET="${arg#*=}"
+            ;;
+        --toolchain-path=*)
+            TOOLCHAIN_PATH="${arg#*=}"
             ;;
         --clean)
             CLEAN_BUILD=true
@@ -63,11 +68,6 @@ fi
 
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
-
-if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Error: Currently only bootstrap builds are supported (--bootstrap)"
-    exit 1
-fi
 
 if [ "$BOOTSTRAP" = "true" ]; then
     # In bootstrap mode, host and target must be the current system triple
@@ -101,6 +101,9 @@ cd "$ISL_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+if [ -n "$TOOLCHAIN_PATH" ]; then
+    export PATH="$TOOLCHAIN_PATH/bin:$PATH"
+fi
 export PATH="$PREFIX/bin:$PATH"
 
 echo "Building isl-$ISL_VERSION"
@@ -109,6 +112,9 @@ echo "Target: $TARGET"
 echo "Source: $SRC_DIR/isl-$ISL_VERSION"
 echo "Build:  $ISL_BUILD_DIR"
 echo "Prefix: $PREFIX"
+if [ -n "$TOOLCHAIN_PATH" ]; then
+    echo "Toolchain: $TOOLCHAIN_PATH"
+fi
 echo "Path:   $PATH"
 echo
 
