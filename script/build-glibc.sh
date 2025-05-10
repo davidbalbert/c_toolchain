@@ -61,7 +61,7 @@ if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
-if [ "BOOTSTRAP" = true ]; then
+if [ "$BOOTSTRAP" = true ]; then
     PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
 else
     PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
@@ -88,12 +88,27 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
+if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
+    BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
+        export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
+        echo "Using bootstrap toolchain: $BOOTSTRAP_TOOLCHAIN"
+    else
+        echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
+        echo "You may need to build it first with --bootstrap"
+    fi
+fi
+
 export PATH="$PREFIX/bin:$PATH"
 
 echo "Building glibc $GLIBC_VERSION"
-echo "Source: $SRC_DIR/glibc-$GLIBC_VERSION"
-echo "Build: $GLIBC_BUILD_DIR"
+echo "Host:    $HOST"
+echo "Target:  $TARGET"
+echo "Source:  $SRC_DIR/glibc-$GLIBC_VERSION"
+echo "Build:   $GLIBC_BUILD_DIR"
+echo "Prefix:  $PREFIX"
 echo "Sysroot: $SYSROOT"
+echo "Path:    $PATH"
 echo
 
 # Ensure the kernel headers are installed first
@@ -103,10 +118,8 @@ if [ ! -d "$SYSROOT/usr/include/linux" ]; then
     exit 1
 fi
 
-# Change to build directory
 cd "$GLIBC_BUILD_DIR"
 
-# Configure glibc
 echo "Configuring glibc..."
 "$SRC_DIR/glibc-$GLIBC_VERSION/configure" \
     --prefix=/usr \
@@ -115,13 +128,11 @@ echo "Configuring glibc..."
     --with-headers="$SYSROOT/usr/include" \
     libc_cv_slibdir=/usr/lib \
 
-# Build glibc
 echo "Building glibc..."
 make -j$(nproc) \
     BUILD_CFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     BUILD_CXXFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-# Install glibc to the sysroot
 echo "Installing glibc to sysroot..."
 make DESTDIR="$SYSROOT" install
 

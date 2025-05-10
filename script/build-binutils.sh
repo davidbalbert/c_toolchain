@@ -10,7 +10,6 @@ print_usage() {
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
-    echo "  --toolchain-path=DIR Path to bootstrap toolchain directory"
     echo "  --clean              Clean the build directory before building"
     echo "  --bootstrap          Build bootstrap binutils using the system compiler"
     echo "  --help               Display this help message"
@@ -24,7 +23,7 @@ BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET=""
-TOOLCHAIN_PATH=""
+# TOOLCHAIN_PATH variable removed
 CLEAN_BUILD=false
 BOOTSTRAP=false
 
@@ -39,9 +38,7 @@ for arg in "$@"; do
         --target=*)
             TARGET="${arg#*=}"
             ;;
-        --toolchain-path=*)
-            TOOLCHAIN_PATH="${arg#*=}"
-            ;;
+        # --toolchain-path removed
         --clean)
             CLEAN_BUILD=true
             ;;
@@ -101,9 +98,17 @@ mkdir -p "$BINUTILS_BUILD_DIR"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ -n "$TOOLCHAIN_PATH" ]; then
-    export PATH="$TOOLCHAIN_PATH/bin:$PATH"
+if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
+    BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
+        export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
+        echo "Using bootstrap toolchain: $BOOTSTRAP_TOOLCHAIN"
+    else
+        echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
+        echo "You may need to build it first with --bootstrap"
+    fi
 fi
+
 export PATH="$PREFIX/bin:$PATH"
 
 echo "Building binutils-$BINUTILS_VERSION"
@@ -113,9 +118,6 @@ echo "Source:  $SRC_DIR/binutils-$BINUTILS_VERSION"
 echo "Build:   $BINUTILS_BUILD_DIR"
 echo "Prefix:  $PREFIX"
 echo "Sysroot: $SYSROOT"
-if [ -n "$TOOLCHAIN_PATH" ]; then
-    echo "Toolchain: $TOOLCHAIN_PATH"
-fi
 echo "Path:    $PATH"
 echo
 
