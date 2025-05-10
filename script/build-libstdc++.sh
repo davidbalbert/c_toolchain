@@ -5,13 +5,14 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build bootstrap libstdc++ for the specified target architecture."
+    echo "Build libstdc++ for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
     echo "  --host=TRIPLE        Set the host architecture triple"
     echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
+    echo "  --bootstrap          Build libstdc++ using the bootstrap compiler"
     echo "  --help               Display this help message"
 }
 
@@ -26,6 +27,7 @@ source "$SCRIPT_DIR/common.sh"
 BUILD_ROOT="$ROOT_DIR"
 HOST=""
 TARGET=""
+BOOTSTRAP=false
 CLEAN_BUILD=false
 
 # Parse arguments
@@ -39,6 +41,9 @@ for arg in "$@"; do
             ;;
         --target=*)
             TARGET="${arg#*=}"
+            ;;
+        --bootstrap)
+            BOOTSTRAP=true
             ;;
         --clean)
             CLEAN_BUILD=true
@@ -63,25 +68,24 @@ PKG_DIR="$BUILD_ROOT/pkg"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 echo "Detected system: $SYSTEM_TRIPLE"
 
-# We only support bootstrap builds for now
-# In bootstrap mode, host and target must be the current system triple
+# Set host and target defaults
 if [ -z "$HOST" ]; then
     HOST="$SYSTEM_TRIPLE"
-elif [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: for bootstrap, --host must be ($SYSTEM_TRIPLE)"
-    exit 1
 fi
 
 if [ -z "$TARGET" ]; then
     TARGET="$SYSTEM_TRIPLE"
-elif [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: for bootstrap, --target must be ($SYSTEM_TRIPLE)"
-    exit 1
 fi
 
-BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-SYSROOT="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/sysroot"
+if [ "$BOOTSTRAP" = true ]; then
+    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
+    PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+else
+    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
+    PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+fi
+
+SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 LIBSTDCXX_BUILD_DIR="$BUILD_DIR/libstdcxx"
 
@@ -98,15 +102,6 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building bootstrap libstdc++"
-echo "Host: $HOST"
-echo "Target: $TARGET"
-echo "Source: $SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3"
-echo "Build: $LIBSTDCXX_BUILD_DIR"
-echo "Prefix: $PREFIX"
-echo "Sysroot: $SYSROOT"
-echo
-
 # Check that bootstrap GCC is installed in PREFIX
 if [ ! -x "$PREFIX/bin/$TARGET-gcc" ]; then
     echo "Error: Bootstrap GCC not found in $PREFIX"
@@ -114,8 +109,30 @@ if [ ! -x "$PREFIX/bin/$TARGET-gcc" ]; then
     exit 1
 fi
 
-# Add the bootstrap toolchain to PATH
+# Check if we should use the bootstrap toolchain
+if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
+    BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
+        export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
+        echo "Using bootstrap toolchain: $BOOTSTRAP_TOOLCHAIN"
+    else
+        echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
+        echo "You may need to build it first with --bootstrap"
+    fi
+fi
+
+# Add the current toolchain to PATH
 export PATH="$PREFIX/bin:$PATH"
+
+echo "Building libstdc++"
+echo "Host:    $HOST"
+echo "Target:  $TARGET"
+echo "Source:  $SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3"
+echo "Build:   $LIBSTDCXX_BUILD_DIR"
+echo "Prefix:  $PREFIX"
+echo "Sysroot: $SYSROOT"
+echo "Path:    $PATH"
+echo
 
 # Change to build directory
 cd "$LIBSTDCXX_BUILD_DIR"
@@ -134,10 +151,22 @@ echo "Configuring bootstrap libstdc++..."
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
 # Build libstdc++
-echo "Building bootstrap libstdc++..."
+if [ "$BOOTSTRAP" = true ]; then
+    echo "Building bootstrap libstdc++..."
+else
+    echo "Building libstdc++..."
+fi
 make -j$(nproc)
 
-echo "Installing bootstrap libstdc++..."
+if [ "$BOOTSTRAP" = true ]; then
+    echo "Installing bootstrap libstdc++..."
+else
+    echo "Installing libstdc++..."
+fi
 make DESTDIR="$SYSROOT" install
 
-echo "Bootstrap libstdc++ build complete. Installed to $PREFIX"
+if [ "$BOOTSTRAP" = true ]; then
+    echo "Bootstrap libstdc++ build complete. Installed to $PREFIX"
+else
+    echo "libstdc++ build complete. Installed to $PREFIX"
+fi

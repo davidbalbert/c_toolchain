@@ -87,6 +87,7 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
    - Symlink `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot` -> `../sysroot`
       - Having the sysroot nested inside GCC's prefix will make GCC use a relative path,
         letting us move the toolchain around.
+   - Build libstdc++
 
 6. **Build Host Binutils**
    - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
