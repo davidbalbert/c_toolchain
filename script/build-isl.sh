@@ -101,7 +101,6 @@ if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM
     BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
     if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
         export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
-        echo "Using bootstrap toolchain: $BOOTSTRAP_TOOLCHAIN"
     else
         echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
         echo "You may need to build it first with --bootstrap"

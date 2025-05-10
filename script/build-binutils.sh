@@ -102,7 +102,6 @@ if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM
     BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
     if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
         export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
-        echo "Using bootstrap toolchain: $BOOTSTRAP_TOOLCHAIN"
     else
         echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
         echo "You may need to build it first with --bootstrap"
@@ -137,7 +136,6 @@ if [ "$BOOTSTRAP" != "true" ]; then
 fi
 
 CONFIGURE_OPTIONS=(
-    "--prefix=$PREFIX"
     "--host=$HOST"
     "--target=$TARGET"
     "--with-sysroot=$SYSROOT"
@@ -146,8 +144,12 @@ CONFIGURE_OPTIONS=(
     "--disable-werror"
 )
 
-if [ "$BOOTSTRAP" != "true" ]; then
+if [ "$BOOTSTRAP" == "true" ]; then
+    CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
+else
+    CONFIGURE_OPTIONS+=("--prefix=/usr")
     CONFIGURE_OPTIONS+=("--disable-shared")
+    CONFIGURE_OPTIONS+=("--build=$HOST")
 fi
 
 "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
@@ -155,10 +157,16 @@ fi
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
+exit
+
 echo "Building binutils..."
 make -j$(nproc)
 
 echo "Installing binutils..."
-make install
+if [ "$BOOTSTRAP" == "true" ]; then
+    make install
+else
+    make DESTDIR="$PREFIX" install
+fi
 
 echo "Binutils installed to $PREFIX"
