@@ -167,6 +167,7 @@ echo "Configuring GCC..."
     --disable-libstdcxx \
     --disable-bootstrap \
     --enable-languages=c,c++ \
+    --with-gxx-include-dir="$SYSROOT/usr/include/c++/$GCC_VERSION" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 

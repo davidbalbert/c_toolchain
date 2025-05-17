@@ -137,7 +137,7 @@ echo
 cd "$LIBSTDCXX_BUILD_DIR"
 
 # Configure libstdc++-v3
-echo "Configuring bootstrap libstdc++..."
+echo "Configuring libstdc++..."
 "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3/configure" \
     --build="$SYSTEM_TRIPLE" \
     --host="$HOST" \
@@ -146,6 +146,7 @@ echo "Configuring bootstrap libstdc++..."
     --disable-multilib \
     --disable-nls \
     --disable-libstdcxx-pch \
+    --with-gxx-include-dir="/usr/include/c++/$GCC_VERSION" \
     CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
     CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
