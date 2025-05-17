@@ -140,16 +140,16 @@ CONFIGURE_OPTIONS=(
     "--target=$TARGET"
     "--with-sysroot=$SYSROOT"
     "--program-prefix=$TARGET-"
+    "--disable-shared"
     "--enable-new-dtags"
     "--disable-werror"
+    "--with-stage1-ldflags=-static"
 )
 
 if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
 else
-    CONFIGURE_OPTIONS+=("--prefix=/usr")
-    CONFIGURE_OPTIONS+=("--disable-shared")
-    CONFIGURE_OPTIONS+=("--build=$HOST")
+    CONFIGURE_OPTIONS+=("--prefix=/")
 fi
 
 "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
