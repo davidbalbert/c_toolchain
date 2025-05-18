@@ -165,35 +165,19 @@ if [ "$CROSS" = true ]; then
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 else
-    # When building native binutils with bootstrap toolchain, make sure it links against the new glibc
-    # from sysroot instead of the system glibc
-
-    # Determine the correct dynamic linker based on target architecture
-    TARGET_ARCH=$(echo "$TARGET" | cut -d'-' -f1)
-    if [ "$TARGET_ARCH" = "x86_64" ]; then
-        DYNAMIC_LINKER="ld-linux-x86-64.so.2"
-    elif [ "$TARGET_ARCH" = "aarch64" ]; then
-        DYNAMIC_LINKER="ld-linux-aarch64.so.1"
-    elif [ "$TARGET_ARCH" = "arm" ]; then
-        DYNAMIC_LINKER="ld-linux-armhf.so.3"
-    else
-        # Default or unsupported architecture - don't specify the dynamic linker
-        DYNAMIC_LINKER=""
-    fi
-
-    # We need both rpath-link (for linking) and rpath (for runtime)
-    # rpath-link helps the linker find libraries at link time
-    # rpath embeds the library search path into the binary for runtime
-    LINKER_FLAGS="-Wl,-rpath-link=$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -L$SYSROOT/usr/lib"
-    if [ -n "$DYNAMIC_LINKER" ]; then
-        LINKER_FLAGS="$LINKER_FLAGS -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+    # When building native binutils with bootstrap toolchain, make sure it links
+    # against the new glibc from sysroot instead of the system glibc
+    DYNAMIC_LINKER=$(find "$SYSROOT/usr/lib" -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1)
+    if [ -z "$DYNAMIC_LINKER" ]; then
+        echo "Error: No dynamic linker found in $SYSROOT/usr/lib"
+        exit 1
     fi
 
     "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
-        CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=. $LINKER_FLAGS" \
-        CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=. $LINKER_FLAGS" \
-        LDFLAGS="$LINKER_FLAGS"
+        CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+        CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+        LDFLAGS="-Wl,-rpath=$SYSROOT/usr/lib -L$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
 fi
 
 echo "Building binutils..."
