@@ -120,7 +120,6 @@ echo "Sysroot: $SYSROOT"
 echo "Path:    $PATH"
 echo
 
-# Ensure the kernel headers are installed first
 if [ ! -d "$SYSROOT/usr/include/linux" ]; then
     echo "Error: Linux kernel headers must be installed first"
     echo "Run build-linux-headers.sh --host=$HOST --target=$TARGET first"
@@ -136,13 +135,13 @@ echo "Configuring glibc..."
     --enable-kernel=5.4 \
     --with-headers="$SYSROOT/usr/include" \
     libc_cv_slibdir=/usr/lib \
+    CFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+    CXXFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
 echo "Building glibc..."
 make -j$(nproc) \
-    BUILD_CFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-    BUILD_CXXFLAGS="-O2 -g -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
 
-echo "Installing glibc to sysroot..."
+echo "Installing glibc..."
 make DESTDIR="$SYSROOT" install
 
 echo "glibc $GLIBC_VERSION built and installed to $SYSROOT"
