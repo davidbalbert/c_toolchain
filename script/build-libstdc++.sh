@@ -5,14 +5,11 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build libstdc++ for the specified target architecture."
+    echo "Build bootstrap libstdc++ for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
-    echo "  --host=TRIPLE        Set the host architecture triple"
-    echo "  --target=TRIPLE      Set the target architecture triple"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build libstdc++ using the bootstrap compiler"
     echo "  --help               Display this help message"
 }
 
@@ -26,7 +23,7 @@ source "$SCRIPT_DIR/common.sh"
 BUILD_ROOT="$ROOT_DIR"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
-TARGET=""
+TARGET="$SYSTEM_TRIPLE"
 CLEAN_BUILD=false
 BOOTSTRAP=false
 CROSS=false
@@ -37,15 +34,6 @@ for arg in "$@"; do
     case $arg in
         --build-root=*)
             BUILD_ROOT="${arg#*=}"
-            ;;
-        --host=*)
-            HOST="${arg#*=}"
-            ;;
-        --target=*)
-            TARGET="${arg#*=}"
-            ;;
-        --bootstrap)
-            BOOTSTRAP=true
             ;;
         --clean)
             CLEAN_BUILD=true
@@ -62,38 +50,11 @@ for arg in "$@"; do
     esac
 done
 
-if [ -z "$TARGET" ]; then
-    TARGET="$HOST"
-fi
-
-if [ "$BOOTSTRAP" = "true" ] && [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: with --bootstrap, --host must be $SYSTEM_TRIPLE"
-    exit 1
-fi
-
-if [ "$BOOTSTRAP" = "true" ] && [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: with --bootstrap, --target must be $SYSTEM_TRIPLE"
-    exit 1
-fi
-
-if [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
-    CROSS=false
-else
-    CROSS=true
-fi
-
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
 BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
-
-if [ "$BOOTSTRAP" = true ]; then
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-else
-    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
-fi
-
+BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
 LIBSTDCXX_BUILD_DIR="$BUILD_DIR/libstdcxx"
@@ -110,10 +71,7 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$CROSS" = false ]; then
-    PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
-fi
-export PATH="$NATIVE_PREFIX/bin:$PATH"
+export PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 
 echo "Building libstdc++ $GCC_VERSION"
 echo "Host:    $HOST"

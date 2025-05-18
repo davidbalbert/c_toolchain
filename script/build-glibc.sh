@@ -106,7 +106,7 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$CROSS" = false ]; then
+if [ "$BOOTSTRAP" = true ]; then
     PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 fi
 export PATH="$NATIVE_PREFIX/bin:$PATH"
