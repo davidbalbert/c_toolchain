@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+PATCHES_DIR="$ROOT_DIR/patches"
+BUILD_ROOT="$ROOT_DIR"
 CLEAN_SOURCES=false
 
 source "$SCRIPT_DIR/common.sh"
@@ -96,6 +98,17 @@ download() {
     else
         echo "Extracting $(basename $output)..."
         tar -xf "$output" -C "$SRC_DIR"
+        local patch_dir="$PATCHES_DIR/$src"
+        if [ -d "$patch_dir" ] && [ -n "$(ls -A "$patch_dir" 2>/dev/null)" ]; then
+            echo "Patching $src..."
+            for patch in "$patch_dir"/*; do
+                echo "Applying: $(basename "$patch")"
+                cd "$SRC_DIR/$src"
+                patch -p1 < "$patch"
+                cd - > /dev/null
+            done
+            echo
+        fi
     fi
 }
 
