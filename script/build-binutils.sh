@@ -159,7 +159,7 @@ else
     CONFIGURE_OPTIONS+=("--prefix=/")
 fi
 
-if [ "$CROSS" = true ]; then
+if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
     "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
