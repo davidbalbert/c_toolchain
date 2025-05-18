@@ -152,7 +152,6 @@ echo "Configuring GCC..."
     --with-sysroot="$SYSROOT" \
     --with-newlib \
     --without-headers \
-    --with-gmp="$PREFIX" \
     --enable-default-pie \
     --enable-default-ssp \
     --disable-nls \

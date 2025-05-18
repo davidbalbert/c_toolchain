@@ -35,19 +35,6 @@ if [ "$CLEAN_SOURCES" = true ]; then
 
     echo "Deleting $SRC_DIR/linux-$LINUX_VERSION"
     rm -rf "$SRC_DIR/linux-$LINUX_VERSION"
-
-    # GCC dependencies
-    echo "Deleting $SRC_DIR/gmp-$GMP_VERSION"
-    rm -rf "$SRC_DIR/gmp-$GMP_VERSION"
-
-    echo "Deleting $SRC_DIR/mpfr-$MPFR_VERSION"
-    rm -rf "$SRC_DIR/mpfr-$MPFR_VERSION"
-
-    echo "Deleting $SRC_DIR/mpc-$MPC_VERSION"
-    rm -rf "$SRC_DIR/mpc-$MPC_VERSION"
-
-    echo "Deleting $SRC_DIR/isl-$ISL_VERSION"
-    rm -rf "$SRC_DIR/isl-$ISL_VERSION"
 fi
 
 download() {
@@ -117,22 +104,14 @@ BINUTILS_URL="https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz
 GLIBC_URL="https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz"
 LINUX_URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$LINUX_VERSION.tar.gz"
 
-# GCC dependencies URLs
-GMP_URL="https://ftp.gnu.org/gnu/gmp/gmp-$GMP_VERSION.tar.gz"
-MPFR_URL="https://www.mpfr.org/mpfr-$MPFR_VERSION/mpfr-$MPFR_VERSION.tar.gz"
-MPC_URL="https://ftp.gnu.org/gnu/mpc/mpc-$MPC_VERSION.tar.gz"
-ISL_URL="https://gcc.gnu.org/pub/gcc/infrastructure/isl-$ISL_VERSION.tar.bz2"
-
-# Download and extract all sources
-download "$GCC_URL" "$PKG_DIR/gcc-$GCC_VERSION.tar.gz" "$GCC_SHA256" "gcc-$GCC_VERSION"
 download "$BINUTILS_URL" "$PKG_DIR/binutils-$BINUTILS_VERSION.tar.gz" "$BINUTILS_SHA256" "binutils-$BINUTILS_VERSION"
 download "$GLIBC_URL" "$PKG_DIR/glibc-$GLIBC_VERSION.tar.gz" "$GLIBC_SHA256" "glibc-$GLIBC_VERSION"
 download "$LINUX_URL" "$PKG_DIR/linux-$LINUX_VERSION.tar.gz" "$LINUX_SHA256" "linux-$LINUX_VERSION"
+download "$GCC_URL" "$PKG_DIR/gcc-$GCC_VERSION.tar.gz" "$GCC_SHA256" "gcc-$GCC_VERSION"
 
-# Download and extract GCC dependencies
-download "$GMP_URL" "$PKG_DIR/gmp-$GMP_VERSION.tar.gz" "$GMP_SHA256" "gmp-$GMP_VERSION"
-download "$MPFR_URL" "$PKG_DIR/mpfr-$MPFR_VERSION.tar.gz" "$MPFR_SHA256" "mpfr-$MPFR_VERSION"
-download "$MPC_URL" "$PKG_DIR/mpc-$MPC_VERSION.tar.gz" "$MPC_SHA256" "mpc-$MPC_VERSION"
-download "$ISL_URL" "$PKG_DIR/isl-$ISL_VERSION.tar.bz2" "$ISL_SHA256" "isl-$ISL_VERSION"
+# GCC dependencies
+cd "$SRC_DIR/gcc-$GCC_VERSION"
+./contrib/download_prerequisites
+cd - > /dev/null
 
 echo "All sources downloaded and extracted successfully."
