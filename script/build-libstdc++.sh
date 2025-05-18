@@ -128,10 +128,8 @@ cd "$LIBSTDCXX_BUILD_DIR"
 
 echo "Configuring libstdc++..."
 "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3/configure" \
-    --build="$SYSTEM_TRIPLE" \
-    --host="$HOST" \
-    --target="$TARGET" \
     --prefix=/usr \
+    --host="$TARGET" \
     --disable-multilib \
     --disable-nls \
     --disable-libstdcxx-pch \
