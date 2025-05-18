@@ -27,6 +27,7 @@ HOST="$SYSTEM_TRIPLE"
 TARGET=""
 BOOTSTRAP=false
 CLEAN_BUILD=false
+CROSS=false
 
 for arg in "$@"; do
     case $arg in
@@ -61,17 +62,33 @@ if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
-if [ "$BOOTSTRAP" = true ]; then
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-else
-    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+if [ "$BOOTSTRAP" = "true"] && [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
+    echo "Error: with --bootstrap, --host must be $SYSTEM_TRIPLE"
+    exit 1
 fi
 
+if [ "$BOOTSTRAP" = "true"] && [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
+    echo "Error: with --bootstrap, --target must be $SYSTEM_TRIPLE"
+    exit 1
+fi
+
+if [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
+    CROSS=false
+else
+    CROSS=true
+fi
 
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
+
+BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
+
+if [ "$BOOTSTRAP" = true ]; then
+    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
+else
+    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
+fi
 
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
@@ -89,24 +106,16 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
-    BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-    if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
-        export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
-    else
-        echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
-        echo "You may need to build it first with --bootstrap"
-    fi
+if [ "$CROSS" = false ]; then
+    PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 fi
-
-export PATH="$PREFIX/bin:$PATH"
+export PATH="$NATIVE_PREFIX/bin:$PATH"
 
 echo "Building glibc $GLIBC_VERSION"
 echo "Host:    $HOST"
 echo "Target:  $TARGET"
 echo "Source:  $SRC_DIR/glibc-$GLIBC_VERSION"
 echo "Build:   $GLIBC_BUILD_DIR"
-echo "Prefix:  $PREFIX"
 echo "Sysroot: $SYSROOT"
 echo "Path:    $PATH"
 echo

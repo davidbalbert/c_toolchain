@@ -15,15 +15,11 @@ print_usage() {
     echo "  --help               Display this help message"
 }
 
-# Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Source common definitions
 source "$SCRIPT_DIR/common.sh"
 
 # Default values
-BUILD_ROOT="$ROOT_DIR"
+BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET=""
@@ -56,17 +52,13 @@ for arg in "$@"; do
     esac
 done
 
-SRC_DIR="$BUILD_ROOT/src"
-PKG_DIR="$BUILD_ROOT/pkg"
-
-# If target is not specified, default to host
 if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
-# Versions are defined in common.sh
+SRC_DIR="$BUILD_ROOT/src"
+PKG_DIR="$BUILD_ROOT/pkg"
 
-# Set paths according to our directory structure
 BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
@@ -87,32 +79,29 @@ case "$TARGET_ARCH" in
         ;;
 esac
 
-# Clean build directory if requested
 if [ "$CLEAN_BUILD" = true ] && [ -d "$LINUX_BUILD_DIR" ]; then
     echo "Cleaning $LINUX_BUILD_DIR..."
     rm -rf "$LINUX_BUILD_DIR"
 fi
 
+mkdir -p "$LINUX_BUILD_DIR"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Detected system: $SYSTEM_TRIPLE"
 echo "Installing Linux kernel headers $LINUX_VERSION"
 echo "Target architecture: $TARGET_ARCH (kernel: $KERNEL_ARCH)"
 echo "Source:  $SRC_DIR/linux-$LINUX_VERSION"
+echo "Build:   $LINUX_BUILD_DIR"
 echo "Sysroot: $SYSROOT"
 echo
 
-# Change to Linux source directory
 cd "$SRC_DIR/linux-$LINUX_VERSION"
-
 # Clean the kernel source directory
 make mrproper
 
-# Install the headers to the sysroot
 echo "Installing kernel headers..."
 make ARCH="$KERNEL_ARCH" \
      INSTALL_HDR_PATH="$SYSROOT/usr" \

@@ -26,8 +26,8 @@ HOST="$SYSTEM_TRIPLE"
 TARGET=""
 CLEAN_BUILD=false
 BOOTSTRAP=false
+CROSS=false
 
-# Parse arguments
 for arg in "$@"; do
     case $arg in
         --build-root=*)
@@ -61,31 +61,36 @@ if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
-SRC_DIR="$BUILD_ROOT/src"
-PKG_DIR="$BUILD_ROOT/pkg"
-
-if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Error: Currently only bootstrap builds are supported (--bootstrap)"
+if [ "$BOOTSTRAP" = "true" ] && [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
+    echo "Error: with --bootstrap, --host must be $SYSTEM_TRIPLE"
     exit 1
 fi
 
-if [ "$BOOTSTRAP" = "true" ]; then
-    # In bootstrap mode, host and target must be the current system triple
-    if [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-        echo "Error: with --bootstrap, --host must be ($SYSTEM_TRIPLE)"
-        exit 1
-    fi
-    if [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-        echo "Error: with --bootstrap, --target must be ($SYSTEM_TRIPLE)"
-        exit 1
-    fi
+if [ "$BOOTSTRAP" = "true" ] && [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
+    echo "Error: with --bootstrap, --target must be $SYSTEM_TRIPLE"
+    exit 1
+fi
 
+if [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
+    CROSS=false
+else
+    CROSS=true
+fi
+
+SRC_DIR="$BUILD_ROOT/src"
+PKG_DIR="$BUILD_ROOT/pkg"
+
+BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
+TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+
+if [ "$BOOTSTRAP" = "true" ]; then
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+    PREFIX="$BOOTSTRAP_PREFIX"
     SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 else
     BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
-    PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+    PREFIX="$TARGET_PREFIX"
     SYSROOT="$PREFIX/sysroot"
 fi
 
@@ -97,8 +102,6 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$GCC_BUILD_DIR" ]; then
 fi
 
 mkdir -p "$GCC_BUILD_DIR"
-cd "$GCC_BUILD_DIR"
-
 mkdir -p "$PREFIX"
 
 if [ "$BOOTSTRAP" != "true" ]; then
@@ -111,38 +114,32 @@ if [ "$BOOTSTRAP" != "true" ]; then
     ln -sf "../sysroot" "$PREFIX/sysroot"
 fi
 
+if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
+    echo "Error: Binutils not found in $PREFIX"
+    echo "Please build binutils first using scripts/build-binutils.sh"
+    exit 1
+fi
+
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$BOOTSTRAP" != "true" ] && [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
-    BOOTSTRAP_TOOLCHAIN="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-    if [ -d "$BOOTSTRAP_TOOLCHAIN/bin" ]; then
-        export PATH="$BOOTSTRAP_TOOLCHAIN/bin:$PATH"
-    else
-        echo "Warning: Bootstrap toolchain not found at $BOOTSTRAP_TOOLCHAIN"
-        echo "You may need to build it first with --bootstrap"
-    fi
+if [ "$CROSS" = false ]; then
+    PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 fi
-
-export PATH="$PREFIX/bin:$PATH"
-
-if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
-    echo "Error: Binutils not found in $PREFIX"
-    echo "Please build binutils first using scripts/build-binutils.sh --bootstrap"
-    exit 1
-fi
+export PATH="$NATIVE_PREFIX/bin:$PATH"
 
 echo "Building gcc-$GCC_VERSION"
-echo "Host:   $HOST"
-echo "Target: $TARGET"
-echo "Source: $SRC_DIR/gcc-$GCC_VERSION"
-echo "Build:  $GCC_BUILD_DIR"
-echo "Prefix: $PREFIX"
-echo "Path:   $PATH"
+echo "Host:    $HOST"
+echo "Target:  $TARGET"
+echo "Source:  $SRC_DIR/gcc-$GCC_VERSION"
+echo "Build:   $GCC_BUILD_DIR"
+echo "Prefix:  $PREFIX"
+echo "Sysroot: $SYSROOT"
+echo "Path:    $PATH"
 echo
 
-echo "Configuring GCC..."
+cd "$GCC_BUILD_DIR"
 
 "$SRC_DIR/gcc-$GCC_VERSION/configure" \
     --host="$HOST" \
