@@ -173,11 +173,23 @@ else
         exit 1
     fi
 
+    # We want runpath to be $ORIGIN/../sysroot/usr/lib:$ORIGIN/../../sysroot/usr/lib.
+    # $ORIGIN is a literal token in the ELF file, that is expanded at runtime to the
+    # directory containing the binary. We need both paths because binutils binaries are
+    # hardlinked in two locations: $PREFIX/bin/$TARGET-ld and $PREFIX/$TARGET/bin/ld.
+    #
+    # The abomination below is from here: https://accu.org/journals/overload/31/178/floyd/
+    # The gist is that with binutils nested config-make structure, the literal text
+    # below passes through: shell (this file) -> make -> shell -> make -> shell -> make ->
+    # shell -> ld. In each of the shell steps, "\\" becomes "\" and "\$" becomes "$".
+    # In make, "$$" becomes "$" and "$" is expanded.
+
     "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-        LDFLAGS="-Wl,-rpath=$SYSROOT/usr/lib -L$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+        LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=\\\\\\\\\\\\\\\$\$\\$\$\\\\\\\$\$\\$\$ORIGIN/../sysroot/usr/lib:\\\\\\\\\\\\\\\$\$\\$\$\\\\\\\$\$\\$\$ORIGIN/../../sysroot/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER" \
+        LDFLAGS_FOR_BUILD="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
 fi
 
 echo "Building binutils..."
