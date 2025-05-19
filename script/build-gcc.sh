@@ -141,36 +141,70 @@ echo
 
 cd "$GCC_BUILD_DIR"
 
-"$SRC_DIR/gcc-$GCC_VERSION/configure" \
-    --host="$HOST" \
-    --target="$TARGET" \
-    --prefix="$PREFIX" \
-    --with-glibc-version="$GLIBC_VERSION" \
-    --with-sysroot="$SYSROOT" \
-    --with-newlib \
-    --without-headers \
-    --enable-default-pie \
-    --enable-default-ssp \
-    --disable-nls \
-    --disable-shared \
-    --disable-multilib \
-    --disable-threads \
-    --disable-libatomic \
-    --disable-libgomp \
-    --disable-libquadmath \
-    --disable-libssp \
-    --disable-libvtv \
-    --disable-libstdcxx \
-    --disable-bootstrap \
-    --enable-languages=c,c++ \
-    --with-gxx-include-dir="$SYSROOT/usr/include/c++/$GCC_VERSION" \
-    CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-    CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
+CONFIGURE_OPTIONS=(
+    "--build=$SYSTEM_TRIPLE"
+    "--host=$HOST"
+    "--target=$TARGET"
+    "--with-sysroot=$SYSROOT"
+    "--enable-default-pie"
+    "--enable-default-ssp"
+    "--disable-multilib"
+    "--disable-bootstrap"
+    "--enable-languages=c,c++"
+    "--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION"
+)
 
-echo "Building bootstrap GCC..."
+if [ "$BOOTSTRAP" == "true" ]; then
+    CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
+    CONFIGURE_OPTIONS+=("--with-glibc-version=$GLIBC_VERSION")
+    CONFIGURE_OPTIONS+=("--with-newlib")
+    CONFIGURE_OPTIONS+=("--disable-nls")
+    CONFIGURE_OPTIONS+=("--disable-shared")
+    CONFIGURE_OPTIONS+=("--disable-threads")
+    CONFIGURE_OPTIONS+=("--disable-libatomic")
+    CONFIGURE_OPTIONS+=("--disable-libgomp")
+    CONFIGURE_OPTIONS+=("--disable-libquadmath")
+    CONFIGURE_OPTIONS+=("--disable-libssp")
+    CONFIGURE_OPTIONS+=("--disable-libvtv")
+    CONFIGURE_OPTIONS+=("--disable-libstdcxx")
+    # Might be needed for cross compilers as well
+    CONFIGURE_OPTIONS+=("--without-headers")
+else
+    CONFIGURE_OPTIONS+=("--prefix=/")
+    CONFIGURE_OPTIONS+=("--enable-host-pie")
+    CONFIGURE_OPTIONS+=("--disable-fixincludes")
+    CONFIGURE_OPTIONS+=("--with-build-time-tools=$NATIVE_PREFIX/$TARGET/bin")
+fi
+
+if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
+    "$SRC_DIR/gcc-$GCC_VERSION/configure" \
+        "${CONFIGURE_OPTIONS[@]}" \
+        CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+        CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
+else
+    # When building native binutils with bootstrap toolchain, make sure it links
+    # against the new glibc from sysroot instead of the system glibc
+    DYNAMIC_LINKER=$(find "$SYSROOT/usr/lib" -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1)
+    if [ -z "$DYNAMIC_LINKER" ]; then
+        echo "Error: No dynamic linker found in $SYSROOT/usr/lib"
+        exit 1
+    fi
+
+    "$SRC_DIR/gcc-$GCC_VERSION/configure" \
+        "${CONFIGURE_OPTIONS[@]}" \
+        CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+        CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
+        LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+fi
+
+echo "Building GCC..."
 make -j$(nproc)
 
-echo "Installing bootstrap GCC..."
-make install
+echo "Installing GCC..."
+if [ "$BOOTSTRAP" == "true" ]; then
+    make install
+else
+    make DESTDIR="$PREFIX" install
+fi
 
-echo "Bootstrap GCC build complete. Installed to $PREFIX"
+echo "GCC installed to $PREFIX"
