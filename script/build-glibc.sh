@@ -12,7 +12,6 @@ print_usage() {
     echo "  --host=TRIPLE        Set the host architecture triple (default: system triple)"
     echo "  --target=TRIPLE      Set the target architecture triple (default: same as host)"
     echo "  --clean              Clean the build directory before building"
-    echo "  --bootstrap          Build glibc using the bootstrap compiler"
     echo "  --help               Display this help message"
 }
 
@@ -25,7 +24,6 @@ BUILD_ROOT="$(dirname "$SCRIPT_DIR")"
 SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET=""
-BOOTSTRAP=false
 CLEAN_BUILD=false
 CROSS=false
 
@@ -39,9 +37,6 @@ for arg in "$@"; do
             ;;
         --target=*)
             TARGET="${arg#*=}"
-            ;;
-        --bootstrap)
-            BOOTSTRAP=true
             ;;
         --clean)
             CLEAN_BUILD=true
@@ -62,16 +57,6 @@ if [ -z "$TARGET" ]; then
     TARGET="$HOST"
 fi
 
-if [ "$BOOTSTRAP" = "true"] && [ "$HOST" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: with --bootstrap, --host must be $SYSTEM_TRIPLE"
-    exit 1
-fi
-
-if [ "$BOOTSTRAP" = "true"] && [ "$TARGET" != "$SYSTEM_TRIPLE" ]; then
-    echo "Error: with --bootstrap, --target must be $SYSTEM_TRIPLE"
-    exit 1
-fi
-
 if [ "$HOST" = "$TARGET" ] && [ "$HOST" = "$SYSTEM_TRIPLE" ]; then
     CROSS=false
 else
@@ -84,11 +69,7 @@ PKG_DIR="$BUILD_ROOT/pkg"
 BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
 NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
 
-if [ "$BOOTSTRAP" = true ]; then
-    BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
-else
-    BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
-fi
+BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
 
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
@@ -106,7 +87,7 @@ mkdir -p "$SYSROOT"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$BOOTSTRAP" = true ]; then
+if [ "$CROSS" = false ] && [ ! -x "$NATIVE_PREFIX/bin/$TARGET-gcc" ]; then
     PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 fi
 export PATH="$NATIVE_PREFIX/bin:$PATH"
