@@ -142,7 +142,7 @@ echo
 cd "$GCC_BUILD_DIR"
 
 CONFIGURE_OPTIONS=(
-    "--build=$SYSTEM_TRIPLE"
+    # "--build=$SYSTEM_TRIPLE"
     "--host=$HOST"
     "--target=$TARGET"
     "--with-sysroot=$SYSROOT"
@@ -151,7 +151,6 @@ CONFIGURE_OPTIONS=(
     "--disable-multilib"
     "--disable-bootstrap"
     "--enable-languages=c,c++"
-    "--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION"
 )
 
 if [ "$BOOTSTRAP" == "true" ]; then
@@ -167,13 +166,17 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--disable-libssp")
     CONFIGURE_OPTIONS+=("--disable-libvtv")
     CONFIGURE_OPTIONS+=("--disable-libstdcxx")
-    # Might be needed for cross compilers as well
+    # Might be needed for cross compilers
     CONFIGURE_OPTIONS+=("--without-headers")
+    CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else
     CONFIGURE_OPTIONS+=("--prefix=/")
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")
-    CONFIGURE_OPTIONS+=("--with-build-time-tools=$NATIVE_PREFIX/$TARGET/bin")
+
+    if [ ! -x "$NATIVE_PREFIX/bin/$TARGET-gcc" ]; then
+        CONFIGURE_OPTIONS+=("--with-build-time-tools=$NATIVE_PREFIX/$TARGET/bin")
+    fi
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
@@ -190,11 +193,12 @@ else
         exit 1
     fi
 
-    "$SRC_DIR/gcc-$GCC_VERSION/configure" \
-        "${CONFIGURE_OPTIONS[@]}" \
-        CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-        CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-        LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+    export CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
+    export CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
+    export LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+
+    "../../../../src/gcc-$GCC_VERSION/configure" \
+        "${CONFIGURE_OPTIONS[@]}"
 fi
 
 echo "Building GCC..."
