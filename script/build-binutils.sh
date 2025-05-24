@@ -228,7 +228,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
 
         echo "Setting rpath on $rel_path: $rpath"
         patchelf --set-rpath "$rpath" "$binary"
-    done < <(find "$PREFIX" -type f -executable -print0)
+    done < <(find "$PREFIX" -type f -print0)
 fi
 
 echo "Binutils installed to $PREFIX"
