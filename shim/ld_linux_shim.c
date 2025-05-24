@@ -1,12 +1,12 @@
 // Shim to load the Linux dynamic linker from a path relative to the
 // current executable.
 
-#define NULL ((void*)0)
+#include <stddef.h>
+
 #define PATH_MAX 4096
 
 #ifdef __x86_64__
 typedef long ssize_t;
-typedef unsigned long size_t;
 
 #define SYS_write 1
 #define SYS_execve 59
@@ -17,7 +17,6 @@ typedef unsigned long size_t;
 
 #ifdef __aarch64__
 typedef long ssize_t;
-typedef unsigned long size_t;
 
 #define SYS_write 64
 #define SYS_readlink 78

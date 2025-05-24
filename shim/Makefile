@@ -2,7 +2,7 @@ ARCH ?= $(shell uname -m)
 BUILDDIR ?= .
 DESTDIR ?= /usr/local/bin
 
-CFLAGS = -Os -fno-stack-protector -fno-builtin -Wall -Wextra -Werror
+CFLAGS = -Os -ffreestanding -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 ASFLAGS =
 LDFLAGS = -nostdlib -static
 
