@@ -121,10 +121,16 @@ fi
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-if [ "$CROSS" = false ]; then
-    PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
+# Normally, when building native, non-bootstrap toolchain, we can (and do)
+# add both $BOOTSTRAP_PREFIX and $NATIVE_PREFIX to PATH. But binutils seems
+# to call its own tools during install, and at that point they don't have
+# RUNPATH set yet. So when building a native toolchain, we only put the
+# bootstrap toolchain in PATH.
+if [ "$BOOTSTRAP" = false ] && [ "$CROSS" = false ]; then
+    export PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
+else
+    export PATH="$NATIVE_PREFIX/bin:$PATH"
 fi
-export PATH="$NATIVE_PREFIX/bin:$PATH"
 
 echo "Building binutils-$BINUTILS_VERSION"
 echo "Host:    $HOST"
@@ -168,22 +174,11 @@ else
         exit 1
     fi
 
-    # We want runpath to be $ORIGIN/../sysroot/usr/lib:$ORIGIN/../../sysroot/usr/lib.
-    # $ORIGIN is a literal token in the ELF file, that is expanded at runtime to the
-    # directory containing the binary. We need both paths because binutils binaries are
-    # hardlinked in two locations: $PREFIX/bin/$TARGET-ld and $PREFIX/$TARGET/bin/ld.
-    #
-    # The abomination below is from here: https://accu.org/journals/overload/31/178/floyd/
-    # The gist is that with binutils nested config-make structure, the literal text
-    # below passes through: shell (this file) -> make -> shell -> make -> shell -> make ->
-    # shell -> ld. In each of the shell steps, "\\" becomes "\" and "\$" becomes "$".
-    # In make, "$$" becomes "$" and "$" is expanded.
-
     "../src/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-        LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=\\\\\\\\\\\\\\\$\$\\$\$\\\\\\\$\$\\$\$ORIGIN/../sysroot/usr/lib:\\\\\\\\\\\\\\\$\$\\$\$\\\\\\\$\$\\$\$ORIGIN/../../sysroot/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER" \
+        LDFLAGS="-L$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER" \
         LDFLAGS_FOR_BUILD="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
 fi
 
