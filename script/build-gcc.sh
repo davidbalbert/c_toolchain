@@ -94,14 +94,17 @@ else
     SYSROOT="$PREFIX/sysroot"
 fi
 
-GCC_BUILD_DIR="$BUILD_DIR/gcc"
+GCC_BUILD_DIR="$BUILD_DIR/gcc/build"
 
-if [ "$CLEAN_BUILD" = true ] && [ -d "$GCC_BUILD_DIR" ]; then
-    echo "Cleaning $GCC_BUILD_DIR..."
-    rm -rf "$GCC_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR/gcc" ]; then
+    echo "Cleaning $BUILD_DIR/gcc..."
+    rm -rf "$BUILD_DIR/gcc"
 fi
 
 mkdir -p "$GCC_BUILD_DIR"
+
+# Create symlink to source directory
+ln -sf "$SRC_DIR/gcc-$GCC_VERSION" "$BUILD_DIR/gcc/src"
 mkdir -p "$PREFIX"
 
 if [ "$BOOTSTRAP" != "true" ]; then
@@ -180,7 +183,7 @@ else
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
-    "$SRC_DIR/gcc-$GCC_VERSION/configure" \
+    "../src/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
@@ -197,7 +200,7 @@ else
     export CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
     export LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
 
-    "../../../../src/gcc-$GCC_VERSION/configure" \
+    "../src/configure" \
         "${CONFIGURE_OPTIONS[@]}"
 fi
 
