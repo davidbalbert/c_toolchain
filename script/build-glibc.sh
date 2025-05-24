@@ -73,14 +73,17 @@ BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
 
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
-GLIBC_BUILD_DIR="$BUILD_DIR/glibc-build"
+GLIBC_BUILD_DIR="$BUILD_DIR/glibc/build"
 
-if [ "$CLEAN_BUILD" = true ] && [ -d "$GLIBC_BUILD_DIR" ]; then
-    echo "Cleaning $GLIBC_BUILD_DIR..."
-    rm -rf "$GLIBC_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR/glibc" ]; then
+    echo "Cleaning $BUILD_DIR/glibc..."
+    rm -rf "$BUILD_DIR/glibc"
 fi
 
 mkdir -p "$GLIBC_BUILD_DIR"
+
+# Create symlink to source directory
+ln -sf "$SRC_DIR/glibc-$GLIBC_VERSION" "$BUILD_DIR/glibc/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
@@ -110,7 +113,7 @@ fi
 cd "$GLIBC_BUILD_DIR"
 
 echo "Configuring glibc..."
-"$SRC_DIR/glibc-$GLIBC_VERSION/configure" \
+"../src/configure" \
     --prefix=/usr \
     --host="$TARGET" \
     --enable-kernel=5.4 \

@@ -62,7 +62,7 @@ PKG_DIR="$BUILD_ROOT/pkg"
 BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
-LINUX_BUILD_DIR="$BUILD_DIR/linux-headers"
+LINUX_BUILD_DIR="$BUILD_DIR/linux-headers/build"
 
 # Get the architecture from the target triple
 TARGET_ARCH=$(echo "$TARGET" | cut -d'-' -f1)
@@ -79,12 +79,15 @@ case "$TARGET_ARCH" in
         ;;
 esac
 
-if [ "$CLEAN_BUILD" = true ] && [ -d "$LINUX_BUILD_DIR" ]; then
-    echo "Cleaning $LINUX_BUILD_DIR..."
-    rm -rf "$LINUX_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR/linux-headers" ]; then
+    echo "Cleaning $BUILD_DIR/linux-headers..."
+    rm -rf "$BUILD_DIR/linux-headers"
 fi
 
 mkdir -p "$LINUX_BUILD_DIR"
+
+# Create symlink to source directory
+ln -sf "$SRC_DIR/linux-$LINUX_VERSION" "$BUILD_DIR/linux-headers/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
@@ -98,7 +101,7 @@ echo "Build:   $LINUX_BUILD_DIR"
 echo "Sysroot: $SYSROOT"
 echo
 
-cd "$SRC_DIR/linux-$LINUX_VERSION"
+cd "$BUILD_DIR/linux-headers/src"
 # Clean the kernel source directory
 make mrproper
 

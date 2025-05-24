@@ -93,14 +93,17 @@ else
     SYSROOT="$PREFIX/sysroot"
 fi
 
-BINUTILS_BUILD_DIR="$BUILD_DIR/binutils"
+BINUTILS_BUILD_DIR="$BUILD_DIR/binutils/build"
 
-if [ "$CLEAN_BUILD" = true ] && [ -d "$BINUTILS_BUILD_DIR" ]; then
-    echo "Cleaning $BINUTILS_BUILD_DIR..."
-    rm -rf "$BINUTILS_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR/binutils" ]; then
+    echo "Cleaning $BUILD_DIR/binutils..."
+    rm -rf "$BUILD_DIR/binutils"
 fi
 
 mkdir -p "$BINUTILS_BUILD_DIR"
+
+# Create symlink to source directory
+ln -sf "$SRC_DIR/binutils-$BINUTILS_VERSION" "$BUILD_DIR/binutils/src"
 mkdir -p "$PREFIX"
 
 if [ "$BOOTSTRAP" != "true" ]; then
@@ -152,7 +155,7 @@ else
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
-    "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
+    "../src/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=."
@@ -176,7 +179,7 @@ else
     # shell -> ld. In each of the shell steps, "\\" becomes "\" and "\$" becomes "$".
     # In make, "$$" becomes "$" and "$" is expanded.
 
-    "$SRC_DIR/binutils-$BINUTILS_VERSION/configure" \
+    "../src/configure" \
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \

@@ -25,9 +25,6 @@ SYSTEM_TRIPLE=$(gcc -dumpmachine)
 HOST="$SYSTEM_TRIPLE"
 TARGET="$SYSTEM_TRIPLE"
 CLEAN_BUILD=false
-BOOTSTRAP=false
-CROSS=false
-
 
 # Parse arguments
 for arg in "$@"; do
@@ -53,25 +50,28 @@ done
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
 BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
-LIBSTDCXX_BUILD_DIR="$BUILD_DIR/libstdcxx"
+LIBSTDCXX_BUILD_DIR="$BUILD_DIR/libstdc++/build"
 
-if [ "$CLEAN_BUILD" = true ] && [ -d "$LIBSTDCXX_BUILD_DIR" ]; then
-    echo "Cleaning $LIBSTDCXX_BUILD_DIR..."
-    rm -rf "$LIBSTDCXX_BUILD_DIR"
+if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR/libstdc++" ]; then
+    echo "Cleaning $BUILD_DIR/libstdc++..."
+    rm -rf "$BUILD_DIR/libstdc++"
 fi
 
 mkdir -p "$LIBSTDCXX_BUILD_DIR"
+
+# Create symlink to source directory
+ln -sf "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3" "$BUILD_DIR/libstdc++/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-export PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
+export PATH="$PREFIX/bin:$PATH"
 
 echo "Building libstdc++ $GCC_VERSION"
 echo "Host:    $HOST"
@@ -85,7 +85,7 @@ echo
 cd "$LIBSTDCXX_BUILD_DIR"
 
 echo "Configuring libstdc++..."
-"$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3/configure" \
+"../src/configure" \
     --prefix=/usr \
     --host="$TARGET" \
     --disable-multilib \
