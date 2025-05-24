@@ -121,16 +121,10 @@ fi
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-# Normally, when building native, non-bootstrap toolchain, we can (and do)
-# add both $BOOTSTRAP_PREFIX and $NATIVE_PREFIX to PATH. But binutils seems
-# to call its own tools during install, and at that point they don't have
-# RUNPATH set yet. So when building a native toolchain, we only put the
-# bootstrap toolchain in PATH.
-if [ "$BOOTSTRAP" = false ] && [ "$CROSS" = false ]; then
-    export PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
-else
-    export PATH="$NATIVE_PREFIX/bin:$PATH"
+if [ "$CROSS" = false ]; then
+    PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
 fi
+export PATH="$NATIVE_PREFIX/bin:$PATH"
 
 echo "Building binutils-$BINUTILS_VERSION"
 echo "Host:    $HOST"
@@ -178,8 +172,7 @@ else
         "${CONFIGURE_OPTIONS[@]}" \
         CFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
         CXXFLAGS="-g0 -O2 -ffile-prefix-map=$SRC_DIR=. -ffile-prefix-map=$BUILD_DIR=." \
-        LDFLAGS="-L$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER" \
-        LDFLAGS_FOR_BUILD="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
+        LDFLAGS="-L$SYSROOT/usr/lib -Wl,-rpath=$SYSROOT/usr/lib -Wl,--dynamic-linker=$SYSROOT/usr/lib/$DYNAMIC_LINKER"
 fi
 
 echo "Building binutils..."
@@ -207,6 +200,7 @@ if [ -d "$PREFIX/$TARGET/bin" ]; then
     done
 fi
 
+# Relative rpaths
 if [ "$BOOTSTRAP" != "true" ]; then
     echo "Setting rpath on binaries..."
     while IFS= read -r -d '' binary; do
