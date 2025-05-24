@@ -197,4 +197,43 @@ else
     make DESTDIR="$PREFIX" install
 fi
 
+# Replace hardlinks with copies in $TARGET/bin
+if [ -d "$PREFIX/$TARGET/bin" ]; then
+    echo "Replacing hardlinks with copies..."
+    cd "$PREFIX/$TARGET/bin"
+    for tool in *; do
+        if [ -f "$tool" ] && [ -f "../../bin/$TARGET-$tool" ]; then
+            if [ "$(stat -c %i "$tool")" = "$(stat -c %i "../../bin/$TARGET-$tool")" ]; then
+                echo "Replacing hardlink: $tool"
+                rm "$tool"
+                cp "../../bin/$TARGET-$tool" "$tool"
+            fi
+        fi
+    done
+fi
+
+if [ "$BOOTSTRAP" != "true" ]; then
+    echo "Setting rpath on binaries..."
+    while IFS= read -r -d '' binary; do
+        if ! file "$binary" | grep -q "ELF.*executable"; then
+            continue
+        fi
+
+        # Get path relative to PREFIX
+        rel_path="${binary#$PREFIX/}"
+
+        # Count depth
+        depth=$(echo "$rel_path" | tr -cd '/' | wc -c)
+
+        rpath_prefix=""
+        for ((i=0; i<depth; i++)); do
+            rpath_prefix+="../"
+        done
+        rpath="\$ORIGIN/${rpath_prefix}sysroot/usr/lib"
+
+        echo "Setting rpath on $rel_path: $rpath"
+        patchelf --set-rpath "$rpath" "$binary"
+    done < <(find "$PREFIX" -type f -executable -print0)
+fi
+
 echo "Binutils installed to $PREFIX"
