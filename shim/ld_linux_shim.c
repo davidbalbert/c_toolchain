@@ -5,6 +5,9 @@
 #define PATH_MAX 4096
 
 #ifdef __x86_64__
+typedef long ssize_t;
+typedef unsigned long size_t;
+
 #define SYS_write 1
 #define SYS_execve 59
 #define SYS_exit 60
@@ -13,6 +16,9 @@
 #endif
 
 #ifdef __aarch64__
+typedef long ssize_t;
+typedef unsigned long size_t;
+
 #define SYS_write 64
 #define SYS_readlink 78
 #define SYS_exit 93
@@ -22,25 +28,25 @@
 
 extern long syscall3(long num, long arg1, long arg2, long arg3);
 
-static long
-readlink(const char *pathname, char *buf, long bufsiz) {
+static ssize_t
+readlink(const char *pathname, char *buf, size_t bufsiz) {
     return syscall3(SYS_readlink, (long)pathname, (long)buf, bufsiz);
 }
 
-static long
-write(int fd, const void *buf, long count) {
+static ssize_t
+write(int fd, const void *buf, size_t count) {
     return syscall3(SYS_write, fd, (long)buf, count);
 }
 
-static long
-execve(const char *filename, char *const argv[], char *const envp[]) {
-    return syscall3(SYS_execve, (long)filename, (long)argv, (long)envp);
+static int
+execve(const char *pathname, char *const argv[], char *const envp[]) {
+    return syscall3(SYS_execve, (long)pathname, (long)argv, (long)envp);
 }
 
 // String length
-static int
+static size_t
 strlen(const char *s) {
-    int len = 0;
+    size_t len = 0;
     while (s[len]) len++;
     return len;
 }
@@ -48,12 +54,12 @@ strlen(const char *s) {
 // strlcpy: copy string with size limit
 // Always null-terminates (if size > 0)
 // Returns total length of src (for truncation detection)
-static int
-strlcpy(char *dst, const char *src, int size) {
-    int src_len = strlen(src);
+static size_t
+strlcpy(char *dst, const char *src, size_t size) {
+    size_t src_len = strlen(src);
     if (size > 0) {
-        int copy_len = (src_len >= size) ? size - 1 : src_len;
-        int i;
+        size_t copy_len = (src_len >= size) ? size - 1 : src_len;
+        size_t i;
         for (i = 0; i < copy_len; i++) {
             dst[i] = src[i];
         }
@@ -62,18 +68,18 @@ strlcpy(char *dst, const char *src, int size) {
     return src_len;
 }
 
-// strlcat: concatenate string with size limit  
+// strlcat: concatenate string with size limit
 // Always null-terminates (if size > 0)
 // Returns total length of string it tried to create
-static int
-strlcat(char *dst, const char *src, int size) {
-    int dst_len = strlen(dst);
-    int src_len = strlen(src);
-    
+static size_t
+strlcat(char *dst, const char *src, size_t size) {
+    size_t dst_len = strlen(dst);
+    size_t src_len = strlen(src);
+
     if (dst_len >= size) {
         return dst_len + src_len;  // dst already too long
     }
-    
+
     return dst_len + strlcpy(dst + dst_len, src, size - dst_len);
 }
 
@@ -92,7 +98,7 @@ int
 main(int argc, char **argv) {
     // Get absolute path of current executable using /proc/self/exe
     char exe_path[PATH_MAX];
-    long exe_len = readlink("/proc/self/exe", exe_path, PATH_MAX - 1);
+    ssize_t exe_len = readlink("/proc/self/exe", exe_path, PATH_MAX - 1);
     if (exe_len <= 0) {
         const char err_msg[] = "failed to read /proc/self/exe\n";
         write(2, err_msg, sizeof(err_msg) - 1);
@@ -111,7 +117,7 @@ main(int argc, char **argv) {
     // Build paths with bounds checking
     char ld_path[PATH_MAX];
     char real_path[PATH_MAX];
-    
+
     // Copy directory part safely
     int dir_len = last_slash - exe_path;
     if (dir_len >= PATH_MAX - 50) {  // Leave room for suffixes
@@ -119,14 +125,14 @@ main(int argc, char **argv) {
         write(2, err_msg, sizeof(err_msg) - 1);
         return 1;
     }
-    
+
     if (strlcpy(ld_path, exe_path, PATH_MAX) >= PATH_MAX) {
         const char err_msg[] = "executable path too long\n";
         write(2, err_msg, sizeof(err_msg) - 1);
         return 1;
     }
     ld_path[dir_len] = '\0';  // Truncate to directory
-    
+
     if (strlcpy(real_path, exe_path, PATH_MAX) >= PATH_MAX ||
         strlcat(real_path, ".real", PATH_MAX) >= PATH_MAX) {
         const char err_msg[] = "real path too long\n";
