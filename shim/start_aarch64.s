@@ -14,7 +14,13 @@ _start:
     // argv starts at sp + 8
     add x1, sp, #8
 
-    // Call main(argc, argv)
+    // Compute envp pointer (third argument): envp = sp + 8 * (argc + 2)
+    mov x2, x0
+    add x2, x2, #2
+    lsl x2, x2, #3
+    add x2, sp, x2
+
+    // Call main(argc, argv, envp)
     bl main
 
     // Exit with return value from main

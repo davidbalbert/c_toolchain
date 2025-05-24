@@ -14,10 +14,16 @@ _start:
     # argv starts at rsp + 8
     leaq 8(%rsp), %rsi
 
+    # Compute envp pointer (third argument): envp = rsp + 8 * (argc + 2)
+    movq %rdi, %rdx
+    addq $2, %rdx
+    salq $3, %rdx
+    leaq (%rsp,%rdx), %rdx
+
     # Align stack to 16-byte boundary (ABI requirement)
     andq $-16, %rsp
 
-    # Call main(argc, argv)
+    # Call main(argc, argv, envp)
     call main
 
     # Exit with return value from main
