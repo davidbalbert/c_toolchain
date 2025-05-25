@@ -1,6 +1,7 @@
 // aarch64 startup code
 .global _start
 .global syscall3
+.global syscall4
 .text
 
 _start:
@@ -35,5 +36,16 @@ syscall3:
     mov x0, x1               // arg1 to x0
     mov x1, x2               // arg2 to x1
     mov x2, x3               // arg3 to x2
+    svc #0                   // Invoke system call
+    ret                      // Return value already in x0
+
+// syscall4(num, arg1, arg2, arg3, arg4) - AAPCS calling convention
+// x0 = num, x1 = arg1, x2 = arg2, x3 = arg3, x4 = arg4
+syscall4:
+    mov w8, w0               // Syscall number to w8
+    mov x0, x1               // arg1 to x0
+    mov x1, x2               // arg2 to x1
+    mov x2, x3               // arg3 to x2
+    mov x3, x4               // arg4 to x3
     svc #0                   // Invoke system call
     ret                      // Return value already in x0

@@ -1,6 +1,7 @@
 # x86_64 startup code
 .global _start
 .global syscall3
+.global syscall4
 .text
 
 _start:
@@ -38,5 +39,16 @@ syscall3:
     movq %rsi, %rdi          # arg1 to rdi
     movq %rdx, %rsi          # arg2 to rsi
     movq %rcx, %rdx          # arg3 to rdx
+    syscall                  # Invoke system call
+    ret                      # Return value already in rax
+
+# syscall4(num, arg1, arg2, arg3, arg4) - System V ABI calling convention
+# rdi = num, rsi = arg1, rdx = arg2, rcx = arg3, r8 = arg4
+syscall4:
+    movq %rdi, %rax          # Syscall number to rax
+    movq %rsi, %rdi          # arg1 to rdi
+    movq %rdx, %rsi          # arg2 to rsi
+    movq %rcx, %rdx          # arg3 to rdx
+    movq %r8, %r10           # arg4 to r10 (4th syscall arg register)
     syscall                  # Invoke system call
     ret                      # Return value already in rax
