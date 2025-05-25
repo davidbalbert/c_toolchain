@@ -45,6 +45,29 @@ execve(const char *pathname, char *const argv[], char *const envp[]) {
     return syscall3(SYS_execve, (long)pathname, (long)argv, (long)envp);
 }
 
+// From linux/auxvec.h
+#define AT_NULL   0  /* end of vector */
+#define AT_EXECFN 31 /* filename of program */
+
+// Global auxiliary vector pointer
+static unsigned long *auxv;
+
+// Get auxiliary vector value
+static unsigned long
+getauxval(unsigned long type) {
+    if (!auxv) {
+        return 0;
+    }
+
+    for (unsigned long *p = auxv; p[0] != AT_NULL; p += 2) {
+        if (p[0] == type) {
+            return p[1];
+        }
+    }
+
+    return 0;
+}
+
 // String length
 static size_t
 strlen(const char *s) {
@@ -98,6 +121,12 @@ strrchr(const char *s, int c) {
 
 int
 main(int argc, char *argv[], char *envp[]) {
+    // auxv lives one after envp
+    char **p = envp;
+    while (*p) p++;
+    p++;
+    auxv = (unsigned long *)p;
+
     // Get absolute path of current executable using /proc/self/exe
     char exe_path[PATH_MAX];
     ssize_t exe_len = readlink("/proc/self/exe", exe_path, PATH_MAX - 1);
