@@ -2,6 +2,7 @@
 // current executable.
 
 #include <stddef.h>
+#include <stdnoreturn.h>
 
 #define PATH_MAX 4096
 
@@ -25,6 +26,7 @@ typedef long ssize_t;
 #define LD_LINUX "ld-linux-aarch64.so.1"
 #endif
 
+extern long syscall1(long num, long arg1);
 extern long syscall3(long num, long arg1, long arg2, long arg3);
 extern long syscall4(long num, long arg1, long arg2, long arg3, long arg4);
 
@@ -43,6 +45,12 @@ write(int fd, const void *buf, size_t count) {
 static int
 execve(const char *pathname, char *const argv[], char *const envp[]) {
     return syscall3(SYS_execve, (long)pathname, (long)argv, (long)envp);
+}
+
+static noreturn void
+exit(int status) {
+    syscall1(SYS_exit, status);
+    __builtin_unreachable();
 }
 
 // From linux/auxvec.h
@@ -119,6 +127,12 @@ strrchr(const char *s, int c) {
     return (char*)last;
 }
 
+static noreturn void
+panic(char *s) {
+    write(2, s, strlen(s));
+    exit(1);
+}
+
 int
 main(int argc, char *argv[], char *envp[]) {
     // auxv lives one after envp
@@ -127,52 +141,47 @@ main(int argc, char *argv[], char *envp[]) {
     p++;
     auxv = (unsigned long *)p;
 
-    // Get absolute path of current executable using /proc/self/exe
+    // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim
     char exe_path[PATH_MAX];
     ssize_t exe_len = readlink("/proc/self/exe", exe_path, PATH_MAX - 1);
     if (exe_len <= 0) {
-        const char err[] = "failed to read /proc/self/exe\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
+        panic("failed to read /proc/self/exe\n");
     }
     exe_path[exe_len] = '\0';
 
-    // Find directory of current executable
-    char *last_slash = strrchr(exe_path, '/');
-    if (!last_slash) {
-        const char err[] = "invalid executable path\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
+    // Find toolchain root by stripping "/libexec/ld_linux_shim" from exe_path
+    char *libexec_pos = strrchr(exe_path, '/');
+    if (!libexec_pos || libexec_pos == exe_path) {
+        panic("invalid executable path\n");
+    }
+    *libexec_pos = '\0';  // Remove "/ld_linux_shim"
+
+    libexec_pos = strrchr(exe_path, '/');
+    if (!libexec_pos || libexec_pos == exe_path) {
+        panic("invalid executable path\n");
+    }
+    *libexec_pos = '\0';  // Remove "/libexec", now exe_path is toolchain root
+
+    // Get AT_EXECFN for the real binary path
+    char *execfn = (char *)getauxval(AT_EXECFN);
+    if (!execfn) {
+        panic("AT_EXECFN not found\n");
     }
 
+    // Build paths
     char ld_path[PATH_MAX];
     char real_path[PATH_MAX];
 
-    int dir_len = last_slash - exe_path;
-    if (dir_len >= PATH_MAX - 50) {  // Leave room for suffixes
-        const char err[] = "path too long\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
+    // Build dynamic linker path: {toolchain_root}/sysroot/usr/lib/{LD_LINUX}
+    if (strlcpy(ld_path, exe_path, PATH_MAX) >= PATH_MAX ||
+        strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX) {
+        panic("dynamic linker path too long\n");
     }
 
-    if (strlcpy(ld_path, exe_path, PATH_MAX) >= PATH_MAX) {
-        const char err[] = "executable path too long\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
-    }
-    ld_path[dir_len] = '\0';
-
-    if (strlcpy(real_path, exe_path, PATH_MAX) >= PATH_MAX ||
+    // Build real binary path: {execfn}.real
+    if (strlcpy(real_path, execfn, PATH_MAX) >= PATH_MAX ||
         strlcat(real_path, ".real", PATH_MAX) >= PATH_MAX) {
-        const char err[] = "real path too long\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
-    }
-
-    if (strlcat(ld_path, "/../lib/" LD_LINUX, PATH_MAX) >= PATH_MAX) {
-        const char err[] = "linker path too long\n";
-        write(2, err, sizeof(err) - 1);
-        return 1;
+        panic("real path too long\n");
     }
 
     char *new_argv[argc + 2];
@@ -186,7 +195,5 @@ main(int argc, char *argv[], char *envp[]) {
 
     execve(ld_path, new_argv, envp);
 
-    const char err[] = "execve failed\n";
-    write(2, err, sizeof(err) - 1);
-    return 1;
+    panic("execve failed\n");
 }

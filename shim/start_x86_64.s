@@ -1,5 +1,6 @@
 # x86_64 startup code
 .global _start
+.global syscall1
 .global syscall3
 .global syscall4
 .text
@@ -31,6 +32,14 @@ _start:
     movq %rax, %rdi          # Return value becomes exit code
     movq $60, %rax           # sys_exit
     syscall
+
+# syscall1(num, arg1) - System V ABI calling convention
+# rdi = num, rsi = arg1
+syscall1:
+    movq %rdi, %rax          # Syscall number to rax
+    movq %rsi, %rdi          # arg1 to rdi
+    syscall                  # Invoke system call
+    ret                      # Return value already in rax
 
 # syscall3(num, arg1, arg2, arg3) - System V ABI calling convention
 # rdi = num, rsi = arg1, rdx = arg2, rcx = arg3
