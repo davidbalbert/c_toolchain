@@ -158,6 +158,7 @@ dirname(char *path) {
 static noreturn void
 panic(char *s) {
     write(2, s, strlen(s));
+    write(2, "\n", 1);
     exit(1);
 }
 
@@ -168,8 +169,11 @@ main(int argc, char *argv[]) {
 
     // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim then build ld_path
     ssize_t shim_len = readlink("/proc/self/exe", ld_path, PATH_MAX - 1);
-    if (shim_len <= 0) {
-        panic("failed to read /proc/self/exe\n");
+    if (shim_len < 0) {
+        panic("failed to read /proc/self/exe");
+    }
+    if (shim_len >= PATH_MAX - 1) {
+        panic("path too long\n");
     }
     ld_path[shim_len] = '\0';
 
@@ -180,14 +184,14 @@ main(int argc, char *argv[]) {
     // Get AT_EXECFN for the real binary path
     char *execfn = (char *)getauxval(AT_EXECFN);
     if (!execfn) {
-        panic("AT_EXECFN not found\n");
+        panic("AT_EXECFN not found");
     }
 
     // Build paths
     if (strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX ||
         strlcpy(bin_path, execfn, PATH_MAX) >= PATH_MAX ||
         strlcat(bin_path, ".real", PATH_MAX) >= PATH_MAX) {
-        panic("path too long\n");
+        panic("path too long");
     }
 
     char *new_argv[argc + 2];
@@ -199,5 +203,5 @@ main(int argc, char *argv[]) {
     new_argv[argc + 1] = NULL;
 
     execve(ld_path, new_argv, environ);
-    panic("execve failed\n");
+    panic("execve failed");
 }
