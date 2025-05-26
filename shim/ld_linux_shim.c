@@ -185,15 +185,15 @@ main(int argc, char *argv[], char *envp[]) {
 
     // Build paths
     char ld_path[PATH_MAX];
-    char real_path[PATH_MAX];
+    char bin_path[PATH_MAX];
     if (build_path(ld_path, PATH_MAX, shim_path, "/sysroot/usr/lib/" LD_LINUX) ||
-        build_path(real_path, PATH_MAX, execfn, ".real")) {
+        build_path(bin_path, PATH_MAX, execfn, ".real")) {
         panic("path too long\n");
     }
 
     char *new_argv[argc + 2];
     new_argv[0] = ld_path;
-    new_argv[1] = real_path;
+    new_argv[1] = bin_path;
     for (int i = 1; i < argc; i++) {
         new_argv[i + 1] = argv[i];
     }
