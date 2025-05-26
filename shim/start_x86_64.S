@@ -1,5 +1,7 @@
 # x86_64 startup code
 
+#include "syscall.h"
+
 .global _start
 .global syscall1
 .global syscall3
@@ -56,7 +58,7 @@ _start:
 
     # Exit with return value from main
     movq %rax, %rdi          # Return value becomes exit code
-    movq $60, %rax           # sys_exit
+    movq $SYS_exit, %rax     # sys_exit
     syscall
 
 syscall1:

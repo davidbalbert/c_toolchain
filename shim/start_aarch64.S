@@ -1,5 +1,7 @@
 // aarch64 startup code
 
+#include "syscall.h"
+
 .global _start
 .global syscall1
 .global syscall3
@@ -52,7 +54,7 @@ _start:
     bl main
 
     // Exit with return value from main
-    mov w8, #93              // sys_exit
+    mov w8, #SYS_exit        // sys_exit
     // x0 already contains return value from main
     svc #0
 

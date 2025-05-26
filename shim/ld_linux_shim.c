@@ -4,25 +4,19 @@
 #include <stddef.h>
 #include <stdnoreturn.h>
 
+#include "syscall.h"
+
 #define PATH_MAX 4096
 
 #ifdef __x86_64__
 typedef long ssize_t;
 
-#define SYS_write 1
-#define SYS_execve 59
-#define SYS_exit 60
-#define SYS_readlinkat 267
 #define LD_LINUX "ld-linux-x86-64.so.2"
 #endif
 
 #ifdef __aarch64__
 typedef long ssize_t;
 
-#define SYS_write 64
-#define SYS_readlinkat 78
-#define SYS_exit 93
-#define SYS_execve 221
 #define LD_LINUX "ld-linux-aarch64.so.1"
 #endif
 
@@ -158,7 +152,6 @@ panic(char *s) {
 
 int
 main(int argc, char *argv[]) {
-
     // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim
     char shim_path[PATH_MAX];
     ssize_t shim_len = readlink("/proc/self/exe", shim_path, PATH_MAX - 1);
