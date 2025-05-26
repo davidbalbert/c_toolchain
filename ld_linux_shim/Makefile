@@ -3,18 +3,22 @@ BUILDDIR ?= .
 DESTDIR ?= /usr/local/bin
 SRCDIR ?= .
 
-CC := gcc
-CFLAGS = -Os -g -ffreestanding -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -nostdinc -isystem $(shell $(CC) -print-file-name=include) -MMD -MP
+CC := $(ARCH)-linux-gnu-gcc
+AS := $(ARCH)-linux-gnu-as
+LD := $(ARCH)-linux-gnu-ld
+
+CFLAGS = -Os -g -ffreestanding -fno-stack-protector -fno-builtin -MMD -MP -Wall -Wextra -Werror -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 ASFLAGS = -MMD -MP
 LDFLAGS = -static -nostdlib -nodefaultlibs
+
+# Separate source directory from build directory
+vpath %.c $(SRCDIR)
+vpath %.S $(SRCDIR)
 
 DEPS := $(wildcard $(BUILDDIR)/*.d)
 -include $(DEPS)
 
 $(BUILDDIR)/ld_linux_shim: $(BUILDDIR)/start_$(ARCH).o $(BUILDDIR)/ld_linux_shim.o
-
-$(BUILDDIR)/ld_linux_shim.o: $(SRCDIR)/ld_linux_shim.c
-$(BUILDDIR)/start_$(ARCH).o: $(SRCDIR)/start_$(ARCH).S
 
 install: $(BUILDDIR)/ld_linux_shim
 	cp $< $(DESTDIR)/
