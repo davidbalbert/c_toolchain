@@ -33,31 +33,13 @@ _start:
     movq $60, %rax           # sys_exit
     syscall
 
-# syscall1(num, arg1) - System V ABI calling convention
-# rdi = num, rsi = arg1
 syscall1:
-    movq %rdi, %rax          # Syscall number to rax
-    movq %rsi, %rdi          # arg1 to rdi
-    syscall                  # Invoke system call
-    ret                      # Return value already in rax
-
-# syscall3(num, arg1, arg2, arg3) - System V ABI calling convention
-# rdi = num, rsi = arg1, rdx = arg2, rcx = arg3
 syscall3:
-    movq %rdi, %rax          # Syscall number to rax
-    movq %rsi, %rdi          # arg1 to rdi
-    movq %rdx, %rsi          # arg2 to rsi
-    movq %rcx, %rdx          # arg3 to rdx
-    syscall                  # Invoke system call
-    ret                      # Return value already in rax
-
-# syscall4(num, arg1, arg2, arg3, arg4) - System V ABI calling convention
-# rdi = num, rsi = arg1, rdx = arg2, rcx = arg3, r8 = arg4
 syscall4:
     movq %rdi, %rax          # Syscall number to rax
     movq %rsi, %rdi          # arg1 to rdi
     movq %rdx, %rsi          # arg2 to rsi
     movq %rcx, %rdx          # arg3 to rdx
-    movq %r8, %r10           # arg4 to r10 (4th syscall arg register)
-    syscall                  # Invoke system call
+    movq %r8, %r10           # arg4 to r10
+    syscall
     ret                      # Return value already in rax
