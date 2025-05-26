@@ -83,7 +83,7 @@ fi
 mkdir -p "$GLIBC_BUILD_DIR"
 
 # Create symlink to source directory
-ln -sf "$SRC_DIR/glibc-$GLIBC_VERSION" "$BUILD_DIR/glibc/src"
+ln -sfn "$SRC_DIR/glibc-$GLIBC_VERSION" "$BUILD_DIR/glibc/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables

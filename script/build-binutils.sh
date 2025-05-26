@@ -103,7 +103,7 @@ fi
 mkdir -p "$BINUTILS_BUILD_DIR"
 
 # Create symlink to source directory
-ln -sf "$SRC_DIR/binutils-$BINUTILS_VERSION" "$BUILD_DIR/binutils/src"
+ln -sfn "$SRC_DIR/binutils-$BINUTILS_VERSION" "$BUILD_DIR/binutils/src"
 mkdir -p "$PREFIX"
 
 if [ "$BOOTSTRAP" != "true" ]; then
@@ -114,7 +114,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
     #
     # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
     # because its clearer what's going on.
-    ln -sf "../sysroot" "$PREFIX/sysroot"
+    ln -sfn "../sysroot" "$PREFIX/sysroot"
 fi
 
 # Set reproducibility environment variables

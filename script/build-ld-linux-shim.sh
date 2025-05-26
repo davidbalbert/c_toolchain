@@ -67,7 +67,7 @@ if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR" ]; then
 fi
 
 mkdir -p "$BUILD_DIR/build"
-ln -sf "$SRC_DIR" "$BUILD_DIR/src"
+ln -sfn "$SRC_DIR" "$BUILD_DIR/src"
 
 mkdir -p "$PREFIX/libexec"
 

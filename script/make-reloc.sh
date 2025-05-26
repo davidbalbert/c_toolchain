@@ -103,7 +103,7 @@ while IFS= read -r -d '' binary; do
 
     # Create symlink to ld-linux-shim
     cd "$dir_path"
-    ln -sf "$libexec_rel_path" "$base_name"
+    ln -sfn "$libexec_rel_path" "$base_name"
     cd - > /dev/null
 
     # Set rpath for sysroot location

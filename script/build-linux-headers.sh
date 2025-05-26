@@ -87,7 +87,7 @@ fi
 mkdir -p "$LINUX_BUILD_DIR"
 
 # Create symlink to source directory
-ln -sf "$SRC_DIR/linux-$LINUX_VERSION" "$BUILD_DIR/linux-headers/src"
+ln -sfn "$SRC_DIR/linux-$LINUX_VERSION" "$BUILD_DIR/linux-headers/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables

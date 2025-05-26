@@ -104,7 +104,7 @@ fi
 mkdir -p "$GCC_BUILD_DIR"
 
 # Create symlink to source directory
-ln -sf "$SRC_DIR/gcc-$GCC_VERSION" "$BUILD_DIR/gcc/src"
+ln -sfn "$SRC_DIR/gcc-$GCC_VERSION" "$BUILD_DIR/gcc/src"
 mkdir -p "$PREFIX"
 
 if [ "$BOOTSTRAP" != "true" ]; then
@@ -114,7 +114,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
     #
     # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
     # because its clearer what's going on.
-    ln -sf "../sysroot" "$PREFIX/sysroot"
+    ln -sfn "../sysroot" "$PREFIX/sysroot"
 fi
 
 if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
@@ -169,7 +169,6 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--disable-libssp")
     CONFIGURE_OPTIONS+=("--disable-libvtv")
     CONFIGURE_OPTIONS+=("--disable-libstdcxx")
-    # Might be needed for cross compilers
     CONFIGURE_OPTIONS+=("--without-headers")
     CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else

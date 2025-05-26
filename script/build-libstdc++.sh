@@ -64,7 +64,7 @@ fi
 mkdir -p "$LIBSTDCXX_BUILD_DIR"
 
 # Create symlink to source directory
-ln -sf "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3" "$BUILD_DIR/libstdc++/src"
+ln -sfn "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3" "$BUILD_DIR/libstdc++/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
