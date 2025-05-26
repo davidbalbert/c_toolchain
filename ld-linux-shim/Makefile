@@ -15,15 +15,15 @@ LDFLAGS = -static -nostdlib -nodefaultlibs
 vpath %.c $(SRCDIR)
 vpath %.S $(SRCDIR)
 
+$(BUILDDIR)/ld-linux-shim: $(BUILDDIR)/start_$(ARCH).o $(BUILDDIR)/ld-linux-shim.o
+
 DEPS := $(wildcard $(BUILDDIR)/*.d)
 -include $(DEPS)
 
-$(BUILDDIR)/ld_linux_shim: $(BUILDDIR)/start_$(ARCH).o $(BUILDDIR)/ld_linux_shim.o
-
-install: $(BUILDDIR)/ld_linux_shim
+install: $(BUILDDIR)/ld-linux-shim
 	cp $< $(DESTDIR)/
 
 clean:
-	rm -rf $(BUILDDIR)/*.o $(BUILDDIR)/*.d $(BUILDDIR)/ld_linux_shim
+	rm -rf $(BUILDDIR)/*.o $(BUILDDIR)/*.d $(BUILDDIR)/ld-linux-shim
 
 .PHONY: clean install

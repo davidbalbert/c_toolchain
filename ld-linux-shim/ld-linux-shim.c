@@ -167,7 +167,7 @@ main(int argc, char *argv[]) {
     char ld_path[PATH_MAX];
     char bin_path[PATH_MAX];
 
-    // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim then build ld_path
+    // Get absolute path of $TOOLCHAIN/libexec/ld-linux-shim then build ld_path
     ssize_t shim_len = readlink("/proc/self/exe", ld_path, PATH_MAX - 1);
     if (shim_len < 0) {
         panic("failed to read /proc/self/exe");
@@ -178,7 +178,7 @@ main(int argc, char *argv[]) {
     ld_path[shim_len] = '\0';
 
     // Find toolchain root by getting dirname twice from ld_path
-    dirname(ld_path);  // Remove "ld_linux_shim"
+    dirname(ld_path);  // Remove "ld-linux-shim"
     dirname(ld_path);  // Remove "libexec"
 
     // Get AT_EXECFN for the real binary path

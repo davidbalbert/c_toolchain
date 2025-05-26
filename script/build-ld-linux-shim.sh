@@ -4,7 +4,7 @@ set -euo pipefail
 print_usage() {
     echo "Usage: $(basename "$0") [OPTIONS]"
     echo ""
-    echo "Build ld_linux_shim for the specified target architecture."
+    echo "Build ld-linux-shim for the specified target architecture."
     echo ""
     echo "Options:"
     echo "  --build-root=DIR     Set the build root directory (default: project root)"
@@ -57,8 +57,8 @@ fi
 
 ARCH="${TARGET%%-*}"
 
-SRC_DIR="$ROOT_DIR/ld_linux_shim"
-BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION/ld_linux_shim"
+SRC_DIR="$ROOT_DIR/ld-linux-shim"
+BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION/ld-linux-shim"
 PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
 
 if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR" ]; then
@@ -75,7 +75,7 @@ mkdir -p "$PREFIX/libexec"
 export LC_ALL=C
 export SOURCE_DATE_EPOCH=1
 
-echo "Building ld_linux_shim"
+echo "Building ld-linux-shim"
 echo "Host:    $HOST"
 echo "Target:  $TARGET"
 echo "Arch:    $ARCH"
@@ -85,7 +85,7 @@ echo "Prefix:  $PREFIX"
 echo
 
 # Build using Makefile
-echo "Building ld_linux_shim for $ARCH..."
+echo "Building ld-linux-shim for $ARCH..."
 cd "$BUILD_DIR"
 make -f "$BUILD_DIR/src/Makefile" \
     ARCH="$ARCH"
@@ -95,4 +95,4 @@ make -f "$BUILD_DIR/src/Makefile" \
     install \
     DESTDIR="$PREFIX/libexec"
 
-echo "ld_linux_shim installed successfully at $PREFIX/libexec/ld_linux_shim"
+echo "ld-linux-shim installed successfully at $PREFIX/libexec/ld-linux-shim"
