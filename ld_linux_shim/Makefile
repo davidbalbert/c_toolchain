@@ -1,6 +1,6 @@
 ARCH ?= $(shell uname -m)
 BUILDDIR ?= .
-DESTDIR ?= /usr/local/bin
+DESTDIR ?= /usr/local/libexec
 SRCDIR = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 CC := $(ARCH)-linux-gnu-gcc
