@@ -74,7 +74,9 @@ getauxval(unsigned long type) {
 static size_t
 strlen(const char *s) {
     size_t len = 0;
-    while (s[len]) len++;
+    while (s[len]) {
+        len++;
+    }
     return len;
 }
 
@@ -82,10 +84,10 @@ strlen(const char *s) {
 // Always null-terminates (if size > 0)
 // Returns total length of src (for truncation detection)
 static size_t
-strlcpy(char *dst, const char *src, size_t size) {
+strlcpy(char *dst, const char *src, size_t sz) {
     size_t src_len = strlen(src);
-    if (size > 0) {
-        size_t copy_len = (src_len >= size) ? size - 1 : src_len;
+    if (sz > 0) {
+        size_t copy_len = (src_len >= sz) ? sz - 1 : src_len;
         size_t i;
         for (i = 0; i < copy_len; i++) {
             dst[i] = src[i];
@@ -95,19 +97,17 @@ strlcpy(char *dst, const char *src, size_t size) {
     return src_len;
 }
 
-// strlcat: concatenate string with size limit
-// Always null-terminates (if size > 0)
+// strlcat: concatenate string with sz limit
+// Always null-terminates (if sz > 0)
 // Returns total length of string it tried to create
 static size_t
-strlcat(char *dst, const char *src, size_t size) {
+strlcat(char *dst, const char *src, size_t sz) {
     size_t dst_len = strlen(dst);
     size_t src_len = strlen(src);
-
-    if (dst_len >= size) {
+    if (dst_len >= sz) {
         return dst_len + src_len;  // dst already too long
     }
-
-    return dst_len + strlcpy(dst + dst_len, src, size - dst_len);
+    return dst_len + strlcpy(dst + dst_len, src, sz - dst_len);
 }
 
 // Find last occurrence of character
@@ -152,16 +152,18 @@ panic(char *s) {
 
 int
 main(int argc, char *argv[]) {
-    // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim
-    char shim_path[PATH_MAX];
-    ssize_t shim_len = readlink("/proc/self/exe", shim_path, PATH_MAX - 1);
+    char ld_path[PATH_MAX];
+    char bin_path[PATH_MAX];
+
+    // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim then build ld_path
+    ssize_t shim_len = readlink("/proc/self/exe", ld_path, PATH_MAX - 1);
     if (shim_len <= 0) {
         panic("failed to read /proc/self/exe\n");
     }
-    shim_path[shim_len] = '\0';
+    ld_path[shim_len] = '\0';
 
-    // Find toolchain root by stripping "/libexec/ld_linux_shim" from shim_path
-    if (!strip_dir(shim_path) || !strip_dir(shim_path)) {
+    // Find toolchain root by stripping "/libexec/ld_linux_shim" from ld_path
+    if (!strip_dir(ld_path) || !strip_dir(ld_path)) {
         panic("invalid executable path\n");
     }
 
@@ -172,9 +174,7 @@ main(int argc, char *argv[]) {
     }
 
     // Build paths
-    char ld_path[PATH_MAX];
-    char bin_path[PATH_MAX];
-    if (build_path(ld_path, PATH_MAX, shim_path, "/sysroot/usr/lib/" LD_LINUX) ||
+    if (strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX ||
         build_path(bin_path, PATH_MAX, execfn, ".real")) {
         panic("path too long\n");
     }
