@@ -26,6 +26,9 @@ typedef long ssize_t;
 #define LD_LINUX "ld-linux-aarch64.so.1"
 #endif
 
+extern char **environ;
+extern unsigned long *auxv;
+
 extern long syscall1(long num, long arg1);
 extern long syscall3(long num, long arg1, long arg2, long arg3);
 extern long syscall4(long num, long arg1, long arg2, long arg3, long arg4);
@@ -56,9 +59,6 @@ exit(int status) {
 // From linux/auxvec.h
 #define AT_NULL   0  /* end of vector */
 #define AT_EXECFN 31 /* filename of program */
-
-// Global auxiliary vector pointer
-static unsigned long *auxv;
 
 // Get auxiliary vector value
 static unsigned long
@@ -157,12 +157,7 @@ panic(char *s) {
 }
 
 int
-main(int argc, char *argv[], char *envp[]) {
-    // auxv lives one after envp
-    char **p = envp;
-    while (*p) p++;
-    p++;
-    auxv = (unsigned long *)p;
+main(int argc, char *argv[]) {
 
     // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim
     char shim_path[PATH_MAX];
@@ -199,6 +194,6 @@ main(int argc, char *argv[], char *envp[]) {
     }
     new_argv[argc + 1] = NULL;
 
-    execve(ld_path, new_argv, envp);
+    execve(ld_path, new_argv, environ);
     panic("execve failed\n");
 }

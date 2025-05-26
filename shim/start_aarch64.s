@@ -16,13 +16,31 @@ _start:
     // argv starts at sp + 8
     add x1, sp, #8
 
-    // Compute envp pointer (third argument): envp = sp + 8 * (argc + 2)
+    // Compute envp pointer: envp = sp + 8 * (argc + 2)
     mov x2, x0
     add x2, x2, #2
     lsl x2, x2, #3
     add x2, sp, x2
+    
+    // Store envp in environ global
+    adrp x3, environ
+    add x3, x3, :lo12:environ
+    str x2, [x3]
+    
+    // Find auxv: scan forward from envp until NULL, then skip to next
+    mov x4, x2                   // Start from envp
+1:
+    ldr x5, [x4]                 // Load envp[i]
+    cbz x5, 2f                   // Branch if NULL (end of envp)
+    add x4, x4, #8               // Move to next envp entry
+    b 1b                         // Continue scanning
+2:
+    add x4, x4, #8               // Skip NULL terminator
+    adrp x3, auxv
+    add x3, x3, :lo12:auxv
+    str x4, [x3]                 // Store auxv pointer
 
-    // Call main(argc, argv, envp)
+    // Call main(argc, argv)
     bl main
 
     // Exit with return value from main
@@ -40,3 +58,9 @@ syscall4:
     mov x3, x4               // arg4 to x3
     svc #0
     ret                      // Return value already in x0
+
+.bss
+.global environ
+.global auxv
+environ: .quad 0
+auxv: .quad 0
