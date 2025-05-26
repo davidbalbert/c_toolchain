@@ -123,15 +123,36 @@ strrchr(const char *s, int c) {
     return (char*)last;
 }
 
-// Strip directory from end of path, return pointer to last '/' or NULL on error
+// dirname implementation - returns directory part of path
 static char *
-strip_dir(char *path) {
-    char *pos = strrchr(path, '/');
-    if (!pos || pos == path) {
-        return NULL;
+dirname(char *path) {
+    char *p;
+
+    if (!path || !*path) {
+        return ".";
     }
-    *pos = '\0';
-    return pos;
+
+    // Remove trailing slashes
+    p = path + strlen(path) - 1;
+    while (p > path && *p == '/') {
+        *p-- = '\0';
+    }
+
+    // If no slashes, return "."
+    p = strrchr(path, '/');
+    if (!p) {
+        return ".";
+    }
+
+    // If only "/" at start, return "/"
+    if (p == path) {
+        *(p + 1) = '\0';
+        return path;
+    }
+
+    // Truncate at last slash
+    *p = '\0';
+    return path;
 }
 
 // Build path by concatenating parts, return 0 on success, -1 if too long
@@ -162,10 +183,9 @@ main(int argc, char *argv[]) {
     }
     ld_path[shim_len] = '\0';
 
-    // Find toolchain root by stripping "/libexec/ld_linux_shim" from ld_path
-    if (!strip_dir(ld_path) || !strip_dir(ld_path)) {
-        panic("invalid executable path\n");
-    }
+    // Find toolchain root by getting dirname twice from ld_path
+    dirname(ld_path);  // Remove "ld_linux_shim"
+    dirname(ld_path);  // Remove "libexec"
 
     // Get AT_EXECFN for the real binary path
     char *execfn = (char *)getauxval(AT_EXECFN);
