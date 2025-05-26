@@ -121,10 +121,33 @@ static char *
 strrchr(const char *s, int c) {
     const char *last = NULL;
     while (*s) {
-        if (*s == c) last = s;
+        if (*s == c) {
+            last = s;
+        }
         s++;
     }
     return (char*)last;
+}
+
+// Strip directory from end of path, return pointer to last '/' or NULL on error
+static char *
+strip_dir(char *path) {
+    char *pos = strrchr(path, '/');
+    if (!pos || pos == path) {
+        return NULL;
+    }
+    *pos = '\0';
+    return pos;
+}
+
+// Build path by concatenating parts, return 0 on success, -1 if too long
+static int
+build_path(char *dst, size_t size, const char *part1, const char *part2) {
+    if (strlcpy(dst, part1, size) >= size ||
+        strlcat(dst, part2, size) >= size) {
+        return -1;
+    }
+    return 0;
 }
 
 static noreturn void
@@ -142,25 +165,17 @@ main(int argc, char *argv[], char *envp[]) {
     auxv = (unsigned long *)p;
 
     // Get absolute path of $TOOLCHAIN/libexec/ld_linux_shim
-    char exe_path[PATH_MAX];
-    ssize_t exe_len = readlink("/proc/self/exe", exe_path, PATH_MAX - 1);
-    if (exe_len <= 0) {
+    char shim_path[PATH_MAX];
+    ssize_t shim_len = readlink("/proc/self/exe", shim_path, PATH_MAX - 1);
+    if (shim_len <= 0) {
         panic("failed to read /proc/self/exe\n");
     }
-    exe_path[exe_len] = '\0';
+    shim_path[shim_len] = '\0';
 
-    // Find toolchain root by stripping "/libexec/ld_linux_shim" from exe_path
-    char *libexec_pos = strrchr(exe_path, '/');
-    if (!libexec_pos || libexec_pos == exe_path) {
+    // Find toolchain root by stripping "/libexec/ld_linux_shim" from shim_path
+    if (!strip_dir(shim_path) || !strip_dir(shim_path)) {
         panic("invalid executable path\n");
     }
-    *libexec_pos = '\0';  // Remove "/ld_linux_shim"
-
-    libexec_pos = strrchr(exe_path, '/');
-    if (!libexec_pos || libexec_pos == exe_path) {
-        panic("invalid executable path\n");
-    }
-    *libexec_pos = '\0';  // Remove "/libexec", now exe_path is toolchain root
 
     // Get AT_EXECFN for the real binary path
     char *execfn = (char *)getauxval(AT_EXECFN);
@@ -171,29 +186,19 @@ main(int argc, char *argv[], char *envp[]) {
     // Build paths
     char ld_path[PATH_MAX];
     char real_path[PATH_MAX];
-
-    // Build dynamic linker path: {toolchain_root}/sysroot/usr/lib/{LD_LINUX}
-    if (strlcpy(ld_path, exe_path, PATH_MAX) >= PATH_MAX ||
-        strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX) {
-        panic("dynamic linker path too long\n");
-    }
-
-    // Build real binary path: {execfn}.real
-    if (strlcpy(real_path, execfn, PATH_MAX) >= PATH_MAX ||
-        strlcat(real_path, ".real", PATH_MAX) >= PATH_MAX) {
-        panic("real path too long\n");
+    if (build_path(ld_path, PATH_MAX, shim_path, "/sysroot/usr/lib/" LD_LINUX) ||
+        build_path(real_path, PATH_MAX, execfn, ".real")) {
+        panic("path too long\n");
     }
 
     char *new_argv[argc + 2];
     new_argv[0] = ld_path;
     new_argv[1] = real_path;
-    int i;
-    for (i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         new_argv[i + 1] = argv[i];
     }
     new_argv[argc + 1] = NULL;
 
     execve(ld_path, new_argv, envp);
-
     panic("execve failed\n");
 }
