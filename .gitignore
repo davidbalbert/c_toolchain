@@ -3,3 +3,4 @@ out
 pkg
 src
 *.o
+*.d
