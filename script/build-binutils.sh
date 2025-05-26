@@ -200,29 +200,4 @@ if [ -d "$PREFIX/$TARGET/bin" ]; then
     done
 fi
 
-# Relative rpaths
-if [ "$BOOTSTRAP" != "true" ]; then
-    echo "Setting rpath on binaries..."
-    while IFS= read -r -d '' binary; do
-        if ! file "$binary" | grep -q "ELF.*executable"; then
-            continue
-        fi
-
-        # Get path relative to PREFIX
-        rel_path="${binary#$PREFIX/}"
-
-        # Count depth
-        depth=$(echo "$rel_path" | tr -cd '/' | wc -c)
-
-        rpath_prefix=""
-        for ((i=0; i<depth; i++)); do
-            rpath_prefix+="../"
-        done
-        rpath="\$ORIGIN/${rpath_prefix}sysroot/usr/lib"
-
-        echo "Setting rpath on $rel_path: $rpath"
-        patchelf --set-rpath "$rpath" "$binary"
-    done < <(find "$PREFIX" -type f -print0)
-fi
-
 echo "Binutils installed to $PREFIX"
