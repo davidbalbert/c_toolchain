@@ -7,7 +7,7 @@ CC := $(ARCH)-linux-gnu-gcc
 AS := $(ARCH)-linux-gnu-as
 LD := $(ARCH)-linux-gnu-ld
 
-CFLAGS = -Os -g -ffreestanding -fno-stack-protector -fno-builtin -MMD -MP -Wall -Wextra -Werror -nostdinc -isystem $(shell $(CC) -print-file-name=include)
+CFLAGS = -Os -g -ffreestanding -fno-stack-protector -fno-builtin -MMD -MP -Wall -Wextra -Werror -ffile-prefix-map=$(SRCDIR)=. -ffile-prefix-map=$(BUILDDIR)=. -nostdinc -isystem $(shell $(CC) -print-file-name=include)
 ASFLAGS = -MMD -MP
 LDFLAGS = -static -nostdlib -nodefaultlibs
 

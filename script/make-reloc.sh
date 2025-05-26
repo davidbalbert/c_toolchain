@@ -75,9 +75,6 @@ while IFS= read -r -d '' binary; do
     # Get path relative to TARGET_DIR
     rel_path="${binary#$TARGET_DIR/}"
 
-    if [[ "$rel_path" == sysroot/* ]]; then
-        continue
-    fi
     if [[ "$binary" == *.real ]]; then
         continue
     fi
