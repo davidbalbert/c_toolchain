@@ -155,16 +155,6 @@ dirname(char *path) {
     return path;
 }
 
-// Build path by concatenating parts, return 0 on success, -1 if too long
-static int
-build_path(char *dst, size_t size, const char *part1, const char *part2) {
-    if (strlcpy(dst, part1, size) >= size ||
-        strlcat(dst, part2, size) >= size) {
-        return -1;
-    }
-    return 0;
-}
-
 static noreturn void
 panic(char *s) {
     write(2, s, strlen(s));
@@ -195,7 +185,8 @@ main(int argc, char *argv[]) {
 
     // Build paths
     if (strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX ||
-        build_path(bin_path, PATH_MAX, execfn, ".real")) {
+        strlcpy(bin_path, execfn, PATH_MAX) >= PATH_MAX ||
+        strlcat(bin_path, ".real", PATH_MAX) >= PATH_MAX) {
         panic("path too long\n");
     }
 
