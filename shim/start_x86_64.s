@@ -1,10 +1,21 @@
 # x86_64 startup code
+
 .global _start
 .global syscall1
 .global syscall3
 .global syscall4
-.text
 
+.global environ
+.global auxv
+
+# Mark stack as non-executable
+.section .note.GNU-stack,"",@progbits
+
+.bss
+environ: .quad 0
+auxv: .quad 0
+
+.text
 _start:
     # Stack layout: argc, argv[0], argv[1], ..., NULL, envp[0], ...
     # rsp points to argc
@@ -21,10 +32,10 @@ _start:
     addq $2, %rdx
     salq $3, %rdx
     leaq (%rsp,%rdx), %rdx
-    
+
     # Store envp in environ global
     movq %rdx, environ(%rip)
-    
+
     # Find auxv: scan forward from envp until NULL, then skip to next
     movq %rdx, %rcx              # Start from envp
 1:
@@ -58,9 +69,3 @@ syscall4:
     movq %r8, %r10           # arg4 to r10
     syscall
     ret                      # Return value already in rax
-
-.bss
-.global environ
-.global auxv
-environ: .quad 0
-auxv: .quad 0

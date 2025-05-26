@@ -1,46 +1,54 @@
 // aarch64 startup code
+
 .global _start
 .global syscall1
 .global syscall3
 .global syscall4
+
+.global environ
+.global auxv
+
+// Mark stack as non-executable
+.section .note.GNU-stack,"",@progbits
+
+.bss
+environ: .quad 0
+auxv: .quad 0
+
 .text
 
 _start:
-    // Stack layout: argc, argv[0], argv[1], ..., NULL, envp[0], ...
+    // Stack layout: argc, argv[0], argv[1], ..., NULL, envp[0], ..., NULL, auxv[0], ...
     // sp points to argc
 
     // Load argc into x0 (first argument)
     ldr w0, [sp]
 
-    // Load argv pointer into x1 (second argument)
-    // argv starts at sp + 8
+    // argv = sp + 8
     add x1, sp, #8
 
-    // Compute envp pointer: envp = sp + 8 * (argc + 2)
+    // envp = sp + 8*(argc + 2)
     mov x2, x0
     add x2, x2, #2
     lsl x2, x2, #3
     add x2, sp, x2
-    
-    // Store envp in environ global
-    adrp x3, environ
-    add x3, x3, :lo12:environ
+
+    // environ = envp
+    ldr x3, =environ
     str x2, [x3]
-    
+
     // Find auxv: scan forward from envp until NULL, then skip to next
     mov x4, x2                   // Start from envp
 1:
     ldr x5, [x4]                 // Load envp[i]
-    cbz x5, 2f                   // Branch if NULL (end of envp)
+    cbz x5, 2f                   // Found end (NULL)
     add x4, x4, #8               // Move to next envp entry
     b 1b                         // Continue scanning
 2:
-    add x4, x4, #8               // Skip NULL terminator
-    adrp x3, auxv
-    add x3, x3, :lo12:auxv
+    add x4, x4, #8               // Skip NULL
+    ldr x3, =auxv
     str x4, [x3]                 // Store auxv pointer
 
-    // Call main(argc, argv)
     bl main
 
     // Exit with return value from main
@@ -58,9 +66,3 @@ syscall4:
     mov x3, x4               // arg4 to x3
     svc #0
     ret                      // Return value already in x0
-
-.bss
-.global environ
-.global auxv
-environ: .quad 0
-auxv: .quad 0
