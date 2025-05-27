@@ -1,5 +1,13 @@
 // Shim to load the Linux dynamic linker from a path relative to the
-// current executable.
+// current executable. To use:
+//
+// 1. Install in $ROOT/libexec/ld-linux-shim
+// 2. mv $ROOT/bin/foo $ROOT/bin/foo.real
+// 3. ln -s ../libexec/ld-linux-shim $ROOT/bin/foo
+//
+// Your dynamic linker (ld-linux-x86_64.so.2, etc.) should be installed
+// in $ROOT/sysroot/usr/lib.
+
 
 #include <stddef.h>
 #include <stdnoreturn.h>
