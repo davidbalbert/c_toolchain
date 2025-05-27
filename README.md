@@ -13,10 +13,10 @@ $ script/build-libstdc++.sh --build-root=/path/to/buildroot
 
 $ script/build-binutils.sh --build-root=/path/to/buildroot
 $ script/build-gcc.sh --build-root=/path/to/buildroot
-$ script/build-gcc.sh --build-root=/path/to/buildroot --clean
 $ script/build-glibc.sh --build-root=/path/to/buildroot --clean
+$ script/build-gcc.sh --build-root=/path/to/buildroot --clean
 
-$ script/make-reloc.sh /path/to/buildroot/out/$(uname -m)-linux-gnu/$(uname -m)-linux-gnu-gcc-15.1.0/toolchain
+$ script/make-reloc.sh /path/to/buildroot/out/$(uname -m)-linux-gnu/$(uname -m)-linux-gnu-gcc-15.1.0/toolchain/usr
 ```
 
 ## Requirements

@@ -138,8 +138,10 @@ CONFIGURE_OPTIONS=(
 
 if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
+    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
 else
     CONFIGURE_OPTIONS+=("--prefix=/usr")
+    CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
