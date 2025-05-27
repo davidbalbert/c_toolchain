@@ -5,6 +5,8 @@ Build reproducable, relocatable, (mostly) static C/C++ toolchains and sysroots.
 ## Building
 
 ```bash
+$ script/download.sh --build-root=/path/to/buildroot
+
 $ script/build-binutils.sh --build-root=/path/to/buildroot --bootstrap
 $ script/build-gcc.sh --build-root=/path/to/buildroot --bootstrap
 $ script/build-linux-headers.sh --build-root=/path/to/buildroot
