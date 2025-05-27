@@ -84,14 +84,14 @@ BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain/u
 NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/usr"
 TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
 
+SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
+
 if [ "$BOOTSTRAP" = "true" ]; then
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BOOTSTRAP_PREFIX"
-    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 else
     BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$TARGET_PREFIX"
-    SYSROOT="$PREFIX/sysroot"
 fi
 
 GCC_BUILD_DIR="$BUILD_DIR/gcc/build"
@@ -111,9 +111,6 @@ if [ "$BOOTSTRAP" != "true" ]; then
     # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
     # with a sysroot inside its prefix, it uses relative paths, which means the toolchain
     # can be moved around.
-    #
-    # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
-    # because its clearer what's going on.
     ln -sfn "../../sysroot" "$PREFIX/sysroot"
 fi
 
@@ -174,15 +171,13 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else
     CONFIGURE_OPTIONS+=("--prefix=/usr")
+    CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
+    CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")
 
     if [ ! -x "$NATIVE_PREFIX/bin/$TARGET-gcc" ]; then
-        CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
         CONFIGURE_OPTIONS+=("--with-build-time-tools=$NATIVE_PREFIX/$TARGET/bin")
-    else
-        CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
-        CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
     fi
 fi
 
@@ -209,6 +204,12 @@ else
 fi
 
 echo "Building GCC..."
+make -j$(nproc) configure-gcc
+
+# Remove --with-build-sysroot= from configargs.h so that the path isn't hardcoded
+# into the binary. Helps with reproducibility.
+sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h
+
 make -j$(nproc)
 
 echo "Installing GCC..."
