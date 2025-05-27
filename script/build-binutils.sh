@@ -79,14 +79,14 @@ fi
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
-NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
-TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
+BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
+NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/usr"
+TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
 
 if [ "$BOOTSTRAP" = "true" ]; then
     BUILD_DIR="$BUILD_ROOT/build/bootstrap/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$BOOTSTRAP_PREFIX"
-    SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
+    SYSROOT="$NATIVE_PREFIX/sysroot"
 else
     BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION"
     PREFIX="$TARGET_PREFIX"
@@ -114,7 +114,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
     #
     # $PREFIX/sysroot is the same as $SYSROOT in non-bootstrap builds. Using the former
     # because its clearer what's going on.
-    ln -sfn "../sysroot" "$PREFIX/sysroot"
+    ln -sfn "../../sysroot" "$PREFIX/sysroot"
 fi
 
 # Set reproducibility environment variables
@@ -141,7 +141,6 @@ cd "$BINUTILS_BUILD_DIR"
 CONFIGURE_OPTIONS=(
     "--host=$HOST"
     "--target=$TARGET"
-    "--with-sysroot=$SYSROOT"
     "--program-prefix=$TARGET-"
     "--disable-shared"
     "--enable-new-dtags"
@@ -150,8 +149,14 @@ CONFIGURE_OPTIONS=(
 
 if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
+    # CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
 else
-    CONFIGURE_OPTIONS+=("--prefix=/")
+    CONFIGURE_OPTIONS+=("--prefix=/usr")
+    # CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
+
+    # CONFIGURE_OPTIONS+=("--prefix=/usr")
+    # CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
+    # CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
@@ -182,7 +187,7 @@ echo "Installing binutils..."
 if [ "$BOOTSTRAP" == "true" ]; then
     make install
 else
-    make DESTDIR="$PREFIX" install
+    make DESTDIR="$PREFIX/.." install
 fi
 
 # Replace hardlinks with copies in $TARGET/bin
