@@ -80,9 +80,9 @@ fi
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
-NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/usr"
-TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
+BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
+TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
 
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
@@ -111,7 +111,7 @@ if [ "$BOOTSTRAP" != "true" ]; then
     # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
     # with a sysroot inside its prefix, it uses relative paths, which means the toolchain
     # can be moved around.
-    ln -sfn "../../sysroot" "$PREFIX/sysroot"
+    ln -sfn "../sysroot" "$PREFIX/sysroot"
 fi
 
 if [ ! -x "$PREFIX/bin/$TARGET-as" ]; then
@@ -151,8 +151,6 @@ CONFIGURE_OPTIONS=(
     "--enable-languages=c,c++"
 )
 
-# export host_configargs="--with-sysroot=$SYSROOT"
-
 if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
     CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
@@ -170,8 +168,11 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--without-headers")
     CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else
-    CONFIGURE_OPTIONS+=("--prefix=/usr")
-    CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
+    # Prefix is "" instead of "/" so that configure will see sysroot as a child of prefix
+    # and treat the sysroot as a relative path. Necessary because configure essentially does
+    # is_relative = $prefix == $sysroot || $prefix/* == $sysroot.
+    CONFIGURE_OPTIONS+=("--prefix=")
+    CONFIGURE_OPTIONS+=("--with-sysroot=/sysroot")
     CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")
@@ -216,7 +217,7 @@ echo "Installing GCC..."
 if [ "$BOOTSTRAP" == "true" ]; then
     make install
 else
-    make DESTDIR="$PREFIX/.." install
+    make DESTDIR="$PREFIX" install
 fi
 
 echo "GCC installed to $PREFIX"

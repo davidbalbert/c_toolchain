@@ -59,7 +59,7 @@ ARCH="${TARGET%%-*}"
 
 SRC_DIR="$ROOT_DIR/ld-linux-shim"
 BUILD_DIR="$BUILD_ROOT/build/$HOST/$TARGET-gcc-$GCC_VERSION/ld-linux-shim"
-PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
+PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
 
 if [ "$CLEAN_BUILD" = true ] && [ -d "$BUILD_DIR" ]; then
     echo "Cleaning $BUILD_DIR..."

@@ -79,9 +79,9 @@ fi
 SRC_DIR="$BUILD_ROOT/src"
 PKG_DIR="$BUILD_ROOT/pkg"
 
-BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
-NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/usr"
-TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain/usr"
+BOOTSTRAP_PREFIX="$BUILD_ROOT/out/bootstrap/$TARGET-gcc-$GCC_VERSION/toolchain"
+NATIVE_PREFIX="$BUILD_ROOT/out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain"
+TARGET_PREFIX="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/toolchain"
 
 SYSROOT="$BUILD_ROOT/out/$HOST/$TARGET-gcc-$GCC_VERSION/sysroot"
 
@@ -140,8 +140,11 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
     CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
 else
-    CONFIGURE_OPTIONS+=("--prefix=/usr")
-    CONFIGURE_OPTIONS+=("--with-sysroot=/usr/sysroot")
+    # Prefix is "" instead of "/" so that configure will see sysroot as a child of prefix
+    # and treat the sysroot as a relative path. Necessary because configure essentially does
+    # is_relative = $prefix == $sysroot || $prefix/* == $sysroot.
+    CONFIGURE_OPTIONS+=("--prefix=")
+    CONFIGURE_OPTIONS+=("--with-sysroot=/sysroot")
 fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
@@ -172,7 +175,7 @@ echo "Installing binutils..."
 if [ "$BOOTSTRAP" == "true" ]; then
     make install
 else
-    make DESTDIR="$PREFIX/.." install
+    make DESTDIR="$PREFIX" install
 fi
 
 # Replace hardlinks with copies in $TARGET/bin
