@@ -81,13 +81,19 @@ fi
 
 mkdir -p "$GLIBC_BUILD_DIR"
 
-# Create symlink to source directory
 ln -sfn "$SRC_DIR/glibc-$GLIBC_VERSION" "$BUILD_DIR/glibc/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+TIMESTAMP_FILE="$SRC_DIR/glibc-$GLIBC_VERSION/.timestamp"
+if [ -f "$TIMESTAMP_FILE" ]; then
+    source "$TIMESTAMP_FILE"
+else
+    echo "Warning: No timestamp file found for glibc"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 if [ "$CROSS" = false ] && [ ! -x "$NATIVE_PREFIX/bin/$TARGET-gcc" ]; then
     PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
@@ -125,6 +131,13 @@ echo "Building glibc..."
 make -j$(nproc) \
 
 echo "Installing glibc..."
-make DESTDIR="$SYSROOT" install
+TMPDIR=$(mktemp -d)
+
+make DESTDIR="$TMPDIR" install
+
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
+
+cp -a "$TMPDIR"/* "$SYSROOT"/
+rm -rf "$TMPDIR"
 
 echo "glibc $GLIBC_VERSION built and installed to $SYSROOT"

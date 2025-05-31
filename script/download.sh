@@ -9,6 +9,31 @@ CLEAN_SOURCES=false
 
 source "$SCRIPT_DIR/common.sh"
 
+extract_timestamp() {
+    local tarball="$1"
+
+    if [ ! -f "$tarball" ]; then
+        echo "ERROR: Tarball not found: $tarball" >&2
+        return 1
+    fi
+
+    local newest_timestamp=$(tar -tvf "$tarball" | awk '{print $4" "$5}' | sort -r | head -1)
+
+    if [ -z "$newest_timestamp" ]; then
+        echo "ERROR: Could not extract timestamp from $tarball" >&2
+        return 1
+    fi
+
+    local unix_timestamp=$(date -d "$newest_timestamp" +%s 2>/dev/null)
+
+    if [ $? -ne 0 ] || [ -z "$unix_timestamp" ]; then
+        echo "ERROR: Could not convert timestamp '$newest_timestamp' to Unix time" >&2
+        return 1
+    fi
+
+    echo "$unix_timestamp"
+}
+
 for arg in "$@"; do
     case $arg in
         --build-root=*)
@@ -67,7 +92,6 @@ download() {
                 echo
                 echo "Checksum mismatch for $(basename $output)! Re-downloading..."
                 rm -f "$output"
-                # Remove extracted directory if it exists
                 if [ -d "$SRC_DIR/$src" ]; then
                     echo "Removing $SRC_DIR/$src..."
                     rm -rf "$SRC_DIR/$src"
@@ -98,6 +122,17 @@ download() {
     else
         echo "Extracting $(basename $output)..."
         tar -xf "$output" -C "$SRC_DIR"
+
+        local component_name=$(echo "$src" | cut -d'-' -f1)
+        local timestamp=$(extract_timestamp "$output")
+
+        if [ $? -ne 0 ] || [ -z "$timestamp" ]; then
+            echo "WARNING: Could not extract timestamp from $output, using Unix epoch"
+            timestamp=1
+        fi
+
+        echo "export SOURCE_DATE_EPOCH=$timestamp" > "$SRC_DIR/$src/.timestamp"
+
         local patch_dir="$PATCHES_DIR/$src"
         if [ -d "$patch_dir" ] && [ -n "$(ls -A "$patch_dir" 2>/dev/null)" ]; then
             echo "Patching $src..."

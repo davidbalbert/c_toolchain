@@ -86,13 +86,19 @@ fi
 
 mkdir -p "$LINUX_BUILD_DIR"
 
-# Create symlink to source directory
 ln -sfn "$SRC_DIR/linux-$LINUX_VERSION" "$BUILD_DIR/linux-headers/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+TIMESTAMP_FILE="$SRC_DIR/linux-$LINUX_VERSION/.timestamp"
+if [ -f "$TIMESTAMP_FILE" ]; then
+    source "$TIMESTAMP_FILE"
+else
+    echo "Warning: No timestamp file found for linux"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 echo "Installing Linux kernel headers $LINUX_VERSION"
 echo "Target architecture: $TARGET_ARCH (kernel: $KERNEL_ARCH)"
@@ -102,13 +108,19 @@ echo "Sysroot: $SYSROOT"
 echo
 
 cd "$BUILD_DIR/linux-headers/src"
-# Clean the kernel source directory
 make mrproper
 
 echo "Installing kernel headers..."
+TMPDIR=$(mktemp -d)
+
 make ARCH="$KERNEL_ARCH" \
-     INSTALL_HDR_PATH="$SYSROOT/usr" \
+     INSTALL_HDR_PATH="$TMPDIR/usr" \
      O="$LINUX_BUILD_DIR" \
      headers_install
+
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
+
+cp -a "$TMPDIR"/* "$SYSROOT"/
+rm -rf "$TMPDIR"
 
 echo "Linux kernel headers installed in $SYSROOT/usr/include"

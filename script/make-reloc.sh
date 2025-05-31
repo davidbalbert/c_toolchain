@@ -84,6 +84,8 @@ while IFS= read -r -d '' binary; do
 
     echo "Processing $rel_path"
 
+    original_timestamp=$(stat -c %Y "$binary")
+
     real_binary="$binary.real"
     mv "$binary" "$real_binary"
 
@@ -96,7 +98,6 @@ while IFS= read -r -d '' binary; do
     done
     libexec_rel_path+="libexec/ld-linux-shim"
 
-    # Create symlink to ld-linux-shim
     cd "$dir_path"
     ln -sfn "$libexec_rel_path" "$base_name"
     cd - > /dev/null
@@ -114,6 +115,9 @@ while IFS= read -r -d '' binary; do
     # Set interpreter to non-existent path to force use of our shim
     echo "  Setting interpreter to /nonexistent/ld.so"
     patchelf --set-interpreter "/nonexistent/ld.so" "$real_binary"
+
+    touch -h -d "@$original_timestamp" "$binary"
+    touch -h -d "@$original_timestamp" "$real_binary"
 done < <(find "$TARGET_DIR" -type f -name "*.real" -prune -o -type f -print0)
 
 echo "Relocatable binaries created in $TARGET_DIR"

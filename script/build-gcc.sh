@@ -122,7 +122,14 @@ fi
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+TIMESTAMP_FILE="$SRC_DIR/gcc-$GCC_VERSION/.timestamp"
+if [ -f "$TIMESTAMP_FILE" ]; then
+    source "$TIMESTAMP_FILE"
+else
+    echo "Warning: No timestamp file found for gcc"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 if [ "$CROSS" = false ]; then
     PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
@@ -214,10 +221,13 @@ sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h
 make -j$(nproc)
 
 echo "Installing GCC..."
-if [ "$BOOTSTRAP" == "true" ]; then
-    make install
-else
-    make DESTDIR="$PREFIX" install
-fi
+TMPDIR=$(mktemp -d)
+
+make DESTDIR="$TMPDIR" install
+
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
+
+cp -a "$TMPDIR"/* "$PREFIX"/
+rm -rf "$TMPDIR"
 
 echo "GCC installed to $PREFIX"

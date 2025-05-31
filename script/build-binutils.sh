@@ -102,13 +102,19 @@ fi
 
 mkdir -p "$BINUTILS_BUILD_DIR"
 
-# Create symlink to source directory
 ln -sfn "$SRC_DIR/binutils-$BINUTILS_VERSION" "$BUILD_DIR/binutils/src"
 mkdir -p "$PREFIX"
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+TIMESTAMP_FILE="$SRC_DIR/binutils-$BINUTILS_VERSION/.timestamp"
+if [ -f "$TIMESTAMP_FILE" ]; then
+    source "$TIMESTAMP_FILE"
+else
+    echo "Warning: No timestamp file found for binutils"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 if [ "$CROSS" = false ]; then
     PATH="$BOOTSTRAP_PREFIX/bin:$PATH"
@@ -172,25 +178,30 @@ echo "Building binutils..."
 make -j$(nproc)
 
 echo "Installing binutils..."
-if [ "$BOOTSTRAP" == "true" ]; then
-    make install
-else
-    make DESTDIR="$PREFIX" install
-fi
+TMPDIR=$(mktemp -d)
+
+make DESTDIR="$TMPDIR" install
+
+echo "Setting timestamps to $SOURCE_DATE_EPOCH..."
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
 
 # Replace hardlinks with copies in $TARGET/bin
-if [ -d "$PREFIX/$TARGET/bin" ]; then
+if [ -d "$TMPDIR/$TARGET/bin" ]; then
     echo "Replacing hardlinks with copies..."
-    cd "$PREFIX/$TARGET/bin"
+    cd "$TMPDIR/$TARGET/bin"
     for tool in *; do
         if [ -f "$tool" ] && [ -f "../../bin/$TARGET-$tool" ]; then
             if [ "$(stat -c %i "$tool")" = "$(stat -c %i "../../bin/$TARGET-$tool")" ]; then
                 echo "Replacing hardlink: $tool"
                 rm "$tool"
-                cp "../../bin/$TARGET-$tool" "$tool"
+                cp --preserve=timestamps "../../bin/$TARGET-$tool" "$tool"
             fi
         fi
     done
 fi
+
+cp -a "$TMPDIR"/* "$PREFIX"/
+
+rm -rf "$TMPDIR"
 
 echo "Binutils installed to $PREFIX"

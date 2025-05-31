@@ -73,7 +73,15 @@ mkdir -p "$PREFIX/libexec"
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+# Set timestamp to latest commit in this repository
+if [ -d "$ROOT_DIR/.git" ]; then
+    export SOURCE_DATE_EPOCH=$(cd "$ROOT_DIR" && git log -1 --format=%ct)
+    echo "Using repository timestamp: $SOURCE_DATE_EPOCH ($(date -d @$SOURCE_DATE_EPOCH))"
+else
+    echo "Warning: No git repository found, using epoch"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 echo "Building ld-linux-shim"
 echo "Host:    $HOST"
@@ -91,8 +99,15 @@ make -f "$BUILD_DIR/src/Makefile" \
     ARCH="$ARCH"
 
 # Copy to output directory
+TMPDIR=$(mktemp -d)
+
 make -f "$BUILD_DIR/src/Makefile" \
     install \
-    DESTDIR="$PREFIX/libexec"
+    DESTDIR="$TMPDIR"
+
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
+
+cp -a "$TMPDIR"/* "$PREFIX/libexec"/
+rm -rf "$TMPDIR"
 
 echo "ld-linux-shim installed successfully at $PREFIX/libexec/ld-linux-shim"

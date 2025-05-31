@@ -63,13 +63,19 @@ fi
 
 mkdir -p "$LIBSTDCXX_BUILD_DIR"
 
-# Create symlink to source directory
 ln -sfn "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3" "$BUILD_DIR/libstdc++/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
 export LC_ALL=C.UTF-8
-export SOURCE_DATE_EPOCH=1
+
+TIMESTAMP_FILE="$SRC_DIR/gcc-$GCC_VERSION/.timestamp"
+if [ -f "$TIMESTAMP_FILE" ]; then
+    source "$TIMESTAMP_FILE"
+else
+    echo "Warning: No timestamp file found for libstdc++"
+    export SOURCE_DATE_EPOCH=1
+fi
 
 export PATH="$PREFIX/bin:$PATH"
 
@@ -99,6 +105,13 @@ echo "Building libstdc++..."
 make -j$(nproc)
 
 echo "Installing libstdc++..."
-make DESTDIR="$SYSROOT" install
+TMPDIR=$(mktemp -d)
+
+make DESTDIR="$TMPDIR" install
+
+find "$TMPDIR" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} \;
+
+cp -a "$TMPDIR"/* "$SYSROOT"/
+rm -rf "$TMPDIR"
 
 echo "libstdc++ $GCC_VERSION built and installed to $SYSROOT"
