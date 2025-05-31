@@ -8,10 +8,10 @@
 
 ## Key Build Parameters
 
-- **Reproducibility flags**: 
+- **Reproducibility flags**:
   - `-ffile-prefix-map=ACTUAL_PATH=FIXED_PATH`
   - `SOURCE_DATE_EPOCH=1`
-  - `LC_ALL=C`
+  - `LC_ALL=C.UTF-8`
 
 ## Build Command Reference
 

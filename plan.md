@@ -62,43 +62,32 @@ Build statically linked C/C++ cross compilers and sysroots that don't depend on 
 
 ## Build Sequence (aarch64 Linux Non-Cross Compiler)
 
-1. **Prepare Environment**
-   - Set up build environment variables
-   - Install minimal build dependencies
+1. **Download & Verify Sources**
+```bash
+script/download.sh --build-root=/path/to/buildroot
+   ```
 
-2. **Download & Verify Sources**
-   - GCC 15.1
-   - Binutils
-   - glibc
-   - Linux kernel
+2. **Bootstrap Phase**
+```bash
+script/build-binutils.sh --build-root=/path/to/buildroot --bootstrap
+script/build-gcc.sh --build-root=/path/to/buildroot --bootstrap
+script/build-linux-headers.sh --build-root=/path/to/buildroot
+script/build-glibc.sh --build-root=/path/to/buildroot
+script/build-libstdc++.sh --build-root=/path/to/buildroot
+```
 
-3. **Build Bootstrap Binutils**
-   - Install to bootstrap prefix
-   - Depends on system libc, but will generate identical binaries to a hermetic version.
+3. **Final Phase**
+```bash
+script/build-binutils.sh --build-root=/path/to/buildroot
+script/build-gcc.sh --build-root=/path/to/buildroot
+script/build-glibc.sh --build-root=/path/to/buildroot --clean
+script/build-gcc.sh --build-root=/path/to/buildroot --clean
+```
 
-4. **Build Bootstrap GCC**
-   - Install GCC dependencies (GMP, MPFR, MPC, ISL).
-   - Depends on system libc, but will generate identical binaries to a hermetic version.
-
-5. **Build Host Sysroot**
-   - `out/$HOST/$HOST-gcc-$GCC_VERSION/sysroot`
-   - Install kernel headers
-   - Install glibc
-   - Symlink `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot` -> `../sysroot`
-      - Having the sysroot nested inside GCC's prefix will make GCC use a relative path,
-        letting us move the toolchain around.
-   - Build libstdc++
-
-6. **Build Host Binutils**
-   - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
-   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot`
-   - Links against sysroot libc. As static as possible.
-
-7. **Build Host GCC Toolchain**
-   - Install GCC dependencies (GMP, MPFR, MPC, ISL).
-   - Prefix: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain`
-   - Sysroot: `out/$HOST/$HOST-gcc-$GCC_VERSION/toolchain/sysroot`
-   - Links against sysroot libc. As static as possible.
+4. **Make Relocatable**
+```bash
+script/make-reloc.sh /path/to/buildroot/out/$(uname -m)-linux-gnu/$(uname -m)-linux-gnu-gcc-15.1.0/toolchain
+```
 
 ## Cross-Compilation Strategy
 
@@ -111,7 +100,7 @@ For building x86_64 toolchain on aarch64:
 
 - **Path Normalization**: Use `-ffile-prefix-map=ACTUAL_PATH=FIXED_PATH` for both debug info and macros
 - **Timestamp Control**: Set `SOURCE_DATE_EPOCH=1` for deterministic timestamps
-- **Deterministic Ordering**: Use `LC_ALL=C` during configuration and builds
+- **Deterministic Ordering**: Use `LC_ALL=C.UTF-8` during configuration and builds
 - **Binutils Configuration**: Use `--with-build-sysroot` during configure
 - **Controlled Environment**: Clear/set specific environment variables for builds
 - **Specific Versions**: Pin exact versions of all source packages
@@ -127,15 +116,17 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
 3. Implement individual component build scripts:
    - 3.1. ✅ Bootstrap Binutils
    - 3.2. ✅ Bootstrap GCC
-   - 3.3. Linux kernel headers
-   - 3.4. bootstrap glibc
-   - 3.5  libstdc++
-   - 3.6. Binutils (final)
-   - 3.7. GCC (final)
-   - 3.8. glibc
-4. Create main orchestration script
-5. Test aarch64 → aarch64 build
-6. Verify reproducibility
+   - 3.3. ✅ Linux kernel headers
+   - 3.4. ✅ bootstrap glibc
+   - 3.5  ✅ libstdc++
+   - 3.6. ✅ Binutils (final)
+   - 3.7. ✅ GCC (final)
+   - 3.8. ✅ glibc
+4. ✅ Test aarch64 → aarch64 build
+5. Make sure all files have a created at/modified at date equal to the timestamp of the latest commit.
+6. Create tar.gz files in out/ that are reproducible.
+7. Build in a different directory and verify that we can create identical tar.gz files.
+5. Build with clang and verify that we can create identical tar.gz files.
 
 ## Future Expansion
 

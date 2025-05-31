@@ -68,7 +68,7 @@ ln -sfn "$SRC_DIR/gcc-$GCC_VERSION/libstdc++-v3" "$BUILD_DIR/libstdc++/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 export SOURCE_DATE_EPOCH=1
 
 export PATH="$PREFIX/bin:$PATH"

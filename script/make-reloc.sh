@@ -84,14 +84,12 @@ while IFS= read -r -d '' binary; do
 
     echo "Processing $rel_path"
 
-    # Move binary to .real extension
     real_binary="$binary.real"
     mv "$binary" "$real_binary"
 
-    # Count depth for relative path calculation
+    # Depth of the binary relative to TARGET_DIR
     depth=$(echo "$rel_path" | tr -cd '/' | wc -c)
 
-    # Calculate relative path to libexec
     libexec_rel_path=""
     for ((i=0; i<depth; i++)); do
         libexec_rel_path+="../"

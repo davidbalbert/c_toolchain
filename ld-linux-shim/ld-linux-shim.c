@@ -189,13 +189,12 @@ main(int argc, char *argv[]) {
     dirname(ld_path);  // Remove "ld-linux-shim"
     dirname(ld_path);  // Remove "libexec"
 
-    // Get AT_EXECFN for the real binary path
+    // Get AT_EXECFN for the original path we were execed with
     char *execfn = (char *)getauxval(AT_EXECFN);
     if (!execfn) {
         panic("AT_EXECFN not found");
     }
 
-    // Build paths
     if (strlcat(ld_path, "/sysroot/usr/lib/" LD_LINUX, PATH_MAX) >= PATH_MAX ||
         strlcpy(bin_path, execfn, PATH_MAX) >= PATH_MAX ||
         strlcat(bin_path, ".real", PATH_MAX) >= PATH_MAX) {

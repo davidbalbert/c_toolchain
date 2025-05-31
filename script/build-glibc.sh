@@ -86,7 +86,7 @@ ln -sfn "$SRC_DIR/glibc-$GLIBC_VERSION" "$BUILD_DIR/glibc/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 export SOURCE_DATE_EPOCH=1
 
 if [ "$CROSS" = false ] && [ ! -x "$NATIVE_PREFIX/bin/$TARGET-gcc" ]; then

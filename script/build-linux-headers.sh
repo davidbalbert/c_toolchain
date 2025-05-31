@@ -91,7 +91,7 @@ ln -sfn "$SRC_DIR/linux-$LINUX_VERSION" "$BUILD_DIR/linux-headers/src"
 mkdir -p "$SYSROOT"
 
 # Set reproducibility environment variables
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 export SOURCE_DATE_EPOCH=1
 
 echo "Installing Linux kernel headers $LINUX_VERSION"
