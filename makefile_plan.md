@@ -292,7 +292,79 @@ endif
 6. **Sysroot assembly** happens after final glibc is built
 7. **Downloads can happen in parallel** and early
 
-## Next Steps
+## Implementation Plan
 
-1. **Draft Makefile Structure** - Create initial makefile organization
-2. **Implementation Plan** - Define migration steps from scripts
+### Phase 1: Core Infrastructure (Foundation)
+1. **Create config.mk**
+   - Extract versions and checksums from `script/common.sh`
+   - Test with `include config.mk` in simple makefile
+
+2. **Implement download system**
+   - Port `script/download.sh` logic to makefile targets
+   - Create `dl/%.tar.gz: $(CONFIG)` rule with checksum verification
+   - Test downloading all packages
+
+3. **Implement source extraction**
+   - Create version-specific extraction rules
+   - Port patch application logic from scripts
+   - Test extraction of all packages with patches
+
+### Phase 2: Bootstrap Build System (Native Only)
+4. **Port bootstrap-binutils**
+   - Convert `script/build-binutils.sh --bootstrap` to makefile rule
+   - Create `build/bootstrap/.binutils.done` target
+   - Test bootstrap binutils build
+
+5. **Port bootstrap-gcc**
+   - Convert `script/build-gcc.sh --bootstrap` to makefile rule
+   - Create `build/bootstrap/.gcc.done` target
+   - Test bootstrap gcc build
+
+6. **Port linux-headers and bootstrap-glibc**
+   - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
+   - Create header installation and bootstrap glibc targets
+   - Test complete bootstrap toolchain
+
+### Phase 3: Final Build System (Native Only)
+7. **Port final binutils and gcc**
+   - Convert final versions of build scripts
+   - Create `build/$(HOST)/$(TARGET)/.gcc.done` targets
+   - Test final toolchain build
+
+8. **Port final glibc (clean rebuild)**
+   - Implement clean glibc rebuild logic
+   - Test complete native toolchain end-to-end
+
+### Phase 4: Cross-Compilation Support
+9. **Implement cross-compilation logic**
+   - Add BUILD_SYSTEM detection and IS_NATIVE logic
+   - Create native-* target aliases
+   - Test cross-compilation dependencies
+
+10. **Add sysroot assembly**
+    - Implement sysroot target logic
+    - Test complete cross-compilation workflow
+
+### Phase 5: Polish and Testing
+11. **Add convenience features**
+    - Implement clean targets
+    - Add parallel build optimizations
+    - Test with `make -j`
+
+12. **Comprehensive testing**
+    - Test native builds (aarch64→aarch64)
+    - Test cross-compilation (aarch64→x86_64)
+    - Compare outputs with script-based builds
+    - Test with different config files
+
+### Phase 6: Documentation and Migration
+13. **Update documentation**
+    - Update README.md with makefile usage
+    - Document config file format
+    - Add troubleshooting guide
+
+### Implementation Notes
+- **Start simple**: Begin with native builds only, add cross-compilation later
+- **Test incrementally**: Each phase should produce working results
+- **Preserve scripts**: Keep scripts working during transition for comparison
+- **Version compatibility**: Ensure config.mk format is extensible for future needs
