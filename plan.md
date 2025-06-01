@@ -462,3 +462,4 @@ endif
 - **Test incrementally**: Each phase should produce working results
 - **Preserve scripts**: Keep scripts working during transition for comparison
 - **Version compatibility**: Ensure config.mk format is extensible for future needs
+- **Testing directory**: Always use `/home/david/buildroot` as working directory for testing scripts
