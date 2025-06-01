@@ -147,7 +147,7 @@ LLVM_VERSION := 18.0.0
 ```
 Downloads & Checksums
 ├── gcc-15.1.0.tar.xz
-├── binutils-2.44.tar.xz  
+├── binutils-2.44.tar.xz
 ├── glibc-2.41.tar.xz
 └── linux-6.6.89.tar.xz
 
@@ -175,39 +175,110 @@ Phase 2: Final Toolchain
 # Default config file
 CONFIG ?= config.mk
 
-# Top-level targets
-toolchain: gcc sysroot
+# Top-level user-facing targets
+toolchain: gcc glibc sysroot
 sysroot: glibc linux-headers
 bootstrap: bootstrap-libstdc++
 
-# Bootstrap phase dependencies
-bootstrap-binutils: src/binutils-$(BINUTILS_VERSION)/
-bootstrap-gcc: src/gcc-$(GCC_VERSION)/ bootstrap-binutils  
-linux-headers: src/linux-$(LINUX_VERSION)/
-bootstrap-glibc: src/glibc-$(GLIBC_VERSION)/ bootstrap-gcc linux-headers
-bootstrap-libstdc++: bootstrap-gcc bootstrap-glibc
+# User-facing component targets
+gcc: build/$(HOST)/$(TARGET)/.gcc.done
+binutils: build/$(HOST)/$(TARGET)/.binutils.done
+glibc: build/$(HOST)/$(TARGET)/.glibc.done
+linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.done
+bootstrap-gcc: build/bootstrap/.gcc.done
+bootstrap-binutils: build/bootstrap/.binutils.done
+bootstrap-glibc: build/bootstrap/.glibc.done
+bootstrap-libstdc++: build/bootstrap/.libstdc++.done
 
-# Final phase dependencies (all need bootstrap toolchain)
-binutils: src/binutils-$(BINUTILS_VERSION)/ bootstrap-libstdc++
-gcc: src/gcc-$(GCC_VERSION)/ binutils bootstrap-libstdc++
-glibc: src/glibc-$(GLIBC_VERSION)/ gcc bootstrap-libstdc++
+# Bootstrap phase sentinel files
+build/bootstrap/.binutils.done: | src/binutils-$(BINUTILS_VERSION)/
+	# Configure, build, install bootstrap binutils
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.gcc.done: bootstrap-binutils | src/gcc-$(GCC_VERSION)/
+	# Configure, build, install bootstrap gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.linux-headers.done: | src/linux-$(LINUX_VERSION)/
+	# Install Linux headers
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.glibc.done: bootstrap-gcc linux-headers | src/glibc-$(GLIBC_VERSION)/
+	# Configure, build, install bootstrap glibc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.libstdc++.done: bootstrap-gcc bootstrap-glibc
+	# Build and install libstdc++
+	@mkdir -p $(dir $@) && touch $@
+
+# Final phase sentinel files
+build/$(HOST)/$(TARGET)/.binutils.done: bootstrap-libstdc++ | src/binutils-$(BINUTILS_VERSION)/
+	# Configure, build, install final binutils
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.gcc.done: binutils bootstrap-libstdc++ | src/gcc-$(GCC_VERSION)/
+	# Configure, build, install final gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.glibc.done: gcc bootstrap-libstdc++ | src/glibc-$(GLIBC_VERSION)/
+	# Configure, build, install final glibc (clean)
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.linux-headers.done: | src/linux-$(LINUX_VERSION)/
+	# Install Linux headers for target
+	@mkdir -p $(dir $@) && touch $@
 
 # Source extraction (pattern rule)
 src/%/: dl/%.tar.xz
 	# Extract tarball and apply patches
+	@touch $@
 
 # Download targets
 dl/%.tar.xz: $(CONFIG)
 	# Download and verify checksum
 ```
 
+### Cross-Compilation Dependencies
+True native builds require HOST == TARGET == build system. Otherwise we need explicit native targets:
+
+```makefile
+# Detect build system
+BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
+
+# Check if this is a native build (HOST and TARGET both equal build system)
+IS_NATIVE := $(and $(filter $(HOST),$(BUILD)),$(filter $(TARGET),$(BUILD)))
+
+# Bootstrap only allowed for native builds
+bootstrap: bootstrap-libstdc++
+bootstrap-libstdc++:
+ifeq ($(IS_NATIVE),)
+	$(error Bootstrap only supported for native builds. Use HOST=$(BUILD) TARGET=$(BUILD))
+endif
+
+# Handle native vs cross-compilation
+ifeq ($(IS_NATIVE),)
+  # Cross builds need native toolchain first
+  gcc: native-gcc
+  binutils: native-binutils
+  
+  # Native toolchain targets (only for cross builds)
+  native-gcc: src/gcc-$(GCC_VERSION)/ native-binutils bootstrap-libstdc++
+  native-binutils: src/binutils-$(BINUTILS_VERSION)/ bootstrap-libstdc++
+else
+  # For native builds, native-* targets are aliases to avoid duplication
+  native-gcc: gcc
+  native-binutils: binutils
+endif
+```
+
 ### Key Insights
 1. **Bootstrap toolchain must complete** before any final phase builds
 2. **Clean glibc rebuild** ensures final toolchain uses properly built glibc
-3. **Parallel builds possible** within each phase but not across phases
-4. **Source extraction** happens automatically via pattern rule
-5. **Sysroot assembly** happens after final glibc is built
-6. **Downloads can happen in parallel** and early
+3. **Cross-compilers depend on native toolchain** when HOST ≠ TARGET
+4. **Parallel builds possible** within each phase but not across phases
+5. **Source extraction** happens automatically via pattern rule
+6. **Sysroot assembly** happens after final glibc is built
+7. **Downloads can happen in parallel** and early
 
 ## Next Steps
 
