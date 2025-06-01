@@ -2,6 +2,10 @@ CONFIG ?= config.mk
 
 MKTOOLCHAIN_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+ifeq ($(filter -j%,$(MAKEFLAGS)),)
+  MAKEFLAGS += -j$(shell nproc)
+endif
+
 include $(CONFIG)
 
 BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
