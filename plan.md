@@ -123,10 +123,11 @@ Note: Since final builds will use the identical bootstrap toolchain, we don't ne
    - 3.7. ✅ GCC (final)
    - 3.8. ✅ glibc
 4. ✅ Test aarch64 → aarch64 build
-5. Make sure all files have a created at/modified at date equal to the timestamp of the latest commit.
-6. Create tar.gz files in out/ that are reproducible.
-7. Build in a different directory and verify that we can create identical tar.gz files.
-5. Build with clang and verify that we can create identical tar.gz files.
+5. ✅ Make sure all files have a created at/modified at date equal to the timestamp of the latest commit.
+6. Switch from scripts to makefiles (see makefile_plan.md).
+7. Create tar.gz files in out/ that are reproducible.
+8. Build in a different directory and verify that we can create identical tar.gz files.
+9. Build with clang and verify that we can create identical tar.gz files.
 
 ## Future Expansion
 
