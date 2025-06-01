@@ -45,14 +45,20 @@
 
 ### Primary Usage
 ```bash
-# Build native toolchain (most common case)
-make toolchain HOST=aarch64-linux-gnu TARGET=aarch64-linux-gnu
+# The default target is toolchain
+make
+
+# Build native toolchain (HOST and TARGET default to build system)
+make toolchain
 
 # Build cross-compiler
-make toolchain HOST=aarch64-linux-gnu TARGET=x86_64-linux-gnu
+make toolchain TARGET=linux/x86_64
+
+# Build cross-compiler with explicit HOST
+make toolchain HOST=linux/aarch64 TARGET=linux/x86_64
 
 # Use default config.mk, or specify alternative
-make toolchain HOST=aarch64-linux-gnu TARGET=x86_64-linux-gnu CONFIG=clang-toolchain.mk
+make toolchain TARGET=linux/x86_64 CONFIG=clang-toolchain.mk
 ```
 
 ### Alternative Targets
@@ -61,38 +67,39 @@ make toolchain HOST=aarch64-linux-gnu TARGET=x86_64-linux-gnu CONFIG=clang-toolc
 make download
 
 # Build only bootstrap phase
-make bootstrap HOST=aarch64-linux-gnu TARGET=aarch64-linux-gnu
+make bootstrap HOST=linux/aarch64 TARGET=linux/aarch64
 
 # Build final sysroot only (assumes bootstrap exists)
-make sysroot HOST=aarch64-linux-gnu TARGET=aarch64-linux-gnu
+make sysroot HOST=linux/aarch64 TARGET=linux/aarch64
 
 # Clean specific toolchain
-make clean-toolchain HOST=aarch64-linux-gnu TARGET=aarch64-linux-gnu
+make clean-toolchain HOST=linux/aarch64 TARGET=linux/aarch64
 
 # Clean everything
 make clean
 ```
 
 ### Variables
-- `HOST` - Required: where the compiler runs (aarch64-linux-gnu, x86_64-linux-gnu)
-- `TARGET` - Required: what the compiler builds for
+- `HOST` - Optional: where the compiler runs (defaults to local system, e.g. linux/aarch64, linux/x86_64)
+- `TARGET` - Optional: what the compiler builds for (defaults to HOST)
 - `CONFIG` - Optional: config file (default: config.mk)
 - `BUILD_ROOT` - Optional: build directory (default: current directory)
 
 ### File Structure Generated
 ```
 out/
-├── aarch64-linux-gnu/
-│   └── aarch64-linux-gnu-gcc-15.1.0/
-│       ├── toolchain/     # Final toolchain
-│       └── sysroot/       # Final sysroot
+├── linux/
+│   └── aarch64/
+│       └── aarch64-linux-gcc-15.1.0/
+│           ├── toolchain/     # Final toolchain
+│           └── sysroot/       # Final sysroot
 └── bootstrap/
-    └── aarch64-linux-gnu-gcc-15.1.0/
+    └── aarch64-linux-gcc-15.1.0/
         └── toolchain/     # Bootstrap toolchain
 ```
 
 ### Key Design Principles
-1. **Simple common case**: `make toolchain HOST=... TARGET=...` does everything
+1. **Simple common case**: `make toolchain` builds native toolchain for current system
 2. **Hidden complexity**: Two-phase build happens automatically via dependencies
 3. **Granular control**: Individual phase targets available when needed
 4. **Parallel safe**: All targets support `make -j`
