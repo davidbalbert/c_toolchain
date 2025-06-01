@@ -13,13 +13,6 @@
   - `SOURCE_DATE_EPOCH=1`
   - `LC_ALL=C.UTF-8`
 
-## Build Command Reference
-
-```bash
-# Primary build command (when implemented)
-./scripts/build.sh --target=aarch64-linux-gnu
-```
-
 ## Special Notes
 
 - Using bootstrap compiler approach for reproducibility
