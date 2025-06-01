@@ -379,66 +379,72 @@ endif
    - Extract versions and checksums from `script/common.sh`
    - Test with `include config.mk` in simple makefile
 
-2. **Implement download system**
+2. **Set up parallel build infrastructure**
+   - Add `+` prefix to recipes that invoke make/autotools
+   - Use `$(MAKE)` variable for job server inheritance
+   - Design sentinel file structure for parallel safety
+   - Test with `make -j` from the start
+
+3. **Implement download system**
    - Port `script/download.sh` logic to makefile targets
    - Create `dl/%.tar.gz: $(CONFIG)` rule with checksum verification
-   - Test downloading all packages
+   - Test downloading all packages (can be parallel)
 
-3. **Implement source extraction**
+4. **Implement source extraction**
    - Create version-specific extraction rules
    - Port patch application logic from scripts
    - Test extraction of all packages with patches
 
 ### Phase 2: Bootstrap Build System (Native Only)
-4. **Port bootstrap-binutils**
+5. **Port bootstrap-binutils**
    - Convert `script/build-binutils.sh --bootstrap` to makefile rule
-   - Create `build/bootstrap/.binutils.done` target
+   - Create `build/bootstrap/.binutils.installed` target with parallel-safe rules
    - Test bootstrap binutils build
 
-5. **Port bootstrap-gcc**
+6. **Port bootstrap-gcc**
    - Convert `script/build-gcc.sh --bootstrap` to makefile rule
-   - Create `build/bootstrap/.gcc.done` target
+   - Create `build/bootstrap/.gcc.installed` target with job server support
    - Test bootstrap gcc build
 
-6. **Port linux-headers and bootstrap-glibc**
+7. **Port linux-headers and bootstrap-glibc**
    - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
-   - Create header installation and bootstrap glibc targets
+   - Create header installation and bootstrap glibc targets with `+` prefixes
    - Test complete bootstrap toolchain
 
 ### Phase 3: Final Build System (Native Only)
-7. **Port final binutils and gcc**
+8. **Port final binutils and gcc**
    - Convert final versions of build scripts
    - Create `build/$(HOST)/$(TARGET)/.gcc.done` targets
    - Test final toolchain build
 
-8. **Port final glibc (clean rebuild)**
+9. **Port final glibc (clean rebuild)**
    - Implement clean glibc rebuild logic
    - Test complete native toolchain end-to-end
 
 ### Phase 4: Cross-Compilation Support
-9. **Implement cross-compilation logic**
+10. **Implement cross-compilation logic**
    - Add BUILD_SYSTEM detection and IS_NATIVE logic
    - Create native-* target aliases
    - Test cross-compilation dependencies
 
-10. **Add sysroot assembly**
+11. **Add sysroot assembly**
     - Implement sysroot target logic
     - Test complete cross-compilation workflow
 
 ### Phase 5: Polish and Testing
-11. **Add convenience features**
+12. **Add convenience features**
     - Implement clean targets
     - Add parallel build optimizations
     - Test with `make -j`
 
-12. **Comprehensive testing**
+13. **Comprehensive testing**
     - Test native builds (aarch64→aarch64)
     - Test cross-compilation (aarch64→x86_64)
     - Compare outputs with script-based builds
     - Test with different config files
 
 ### Phase 6: Documentation and Migration
-13. **Update documentation**
+14. **Update documentation**
     - Update README.md with makefile usage
     - Document config file format
     - Add troubleshooting guide
