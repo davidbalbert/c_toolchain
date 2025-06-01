@@ -90,11 +90,11 @@ make clean
 out/
 ├── linux/
 │   └── aarch64/
-│       └── aarch64-linux-gcc-15.1.0/
+│       └── aarch64-linux-gnu-gcc-15.1.0/
 │           ├── toolchain/     # Final toolchain
 │           └── sysroot/       # Final sysroot
 └── bootstrap/
-    └── aarch64-linux-gcc-15.1.0/
+    └── aarch64-linux-gnu-gcc-15.1.0/
         └── toolchain/     # Bootstrap toolchain
 ```
 
@@ -109,6 +109,9 @@ out/
 
 ### config.mk Example
 ```makefile
+# Toolchain identifier
+TOOLCHAIN_NAME := aarch64-linux-gnu-gcc-15.1.0
+
 # Package versions
 GCC_VERSION := 15.1.0
 BINUTILS_VERSION := 2.44
@@ -375,7 +378,7 @@ endif
 ## Implementation Plan
 
 ### Phase 1: Core Infrastructure (Foundation)
-1. **Create config.mk**
+1. ✅ **Create config.mk**
    - Extract versions and checksums from `script/common.sh`
    - Test with `include config.mk` in simple makefile
 

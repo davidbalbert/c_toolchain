@@ -1,0 +1,120 @@
+CONFIG ?= config.mk
+
+include $(CONFIG)
+
+BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
+HOST ?= $(BUILD)
+TARGET ?= $(HOST)
+
+BUILD_ROOT ?= .
+BUILD_DIR := $(BUILD_ROOT)/build
+OUT_DIR := $(BUILD_ROOT)/out
+DL_DIR := $(BUILD_ROOT)/dl
+SRC_DIR := $(BUILD_ROOT)/src
+
+IS_NATIVE := $(and $(filter $(HOST),$(BUILD)),$(filter $(TARGET),$(BUILD)))
+
+BOOTSTRAP_BUILD_DIR := $(BUILD_DIR)/bootstrap
+TARGET_BUILD_DIR := $(BUILD_DIR)/$(HOST)/$(TARGET)
+
+BOOTSTRAP_OUT := $(OUT_DIR)/bootstrap/$(TOOLCHAIN_NAME)
+TARGET_OUT := $(OUT_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
+
+$(BUILD_DIR) $(OUT_DIR) $(DL_DIR) $(SRC_DIR):
+	mkdir -p $@
+
+$(BOOTSTRAP_BUILD_DIR) $(TARGET_BUILD_DIR):
+	mkdir -p $@
+
+$(BOOTSTRAP_OUT) $(TARGET_OUT):
+	mkdir -p $@
+
+.DEFAULT_GOAL := toolchain
+
+.PHONY: toolchain bootstrap download clean test-parallel
+
+toolchain: $(TARGET_OUT)/.toolchain.done
+
+bootstrap: $(BOOTSTRAP_OUT)/.bootstrap.done
+
+# Test target for parallel builds
+test-parallel: $(DL_DIR) $(SRC_DIR) $(BUILD_DIR) $(OUT_DIR)
+	@echo "Testing parallel infrastructure..."
+	@echo "Build system: $(BUILD)"
+	@echo "Host: $(HOST)"
+	@echo "Target: $(TARGET)"
+	@echo "Is native: $(IS_NATIVE)"
+	@echo "Bootstrap build dir: $(BOOTSTRAP_BUILD_DIR)"
+	@echo "Target build dir: $(TARGET_BUILD_DIR)"
+	@echo "Config: $(CONFIG)"
+	@echo "GCC Version: $(GCC_VERSION)"
+
+$(BOOTSTRAP_OUT)/.bootstrap.done: $(BOOTSTRAP_OUT)/.libstdc++.installed | $(BOOTSTRAP_OUT)
+	@echo "Bootstrap toolchain complete"
+	@touch $@
+
+$(TARGET_OUT)/.toolchain.done: $(TARGET_OUT)/.glibc.installed $(TARGET_OUT)/.sysroot.done | $(TARGET_OUT)
+	@echo "Target toolchain complete"
+	@touch $@
+
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: | $(BOOTSTRAP_BUILD_DIR)
+	@echo "Building bootstrap binutils..."
+	@sleep 1  # Simulate build time
+	@touch $@
+
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed | $(BOOTSTRAP_BUILD_DIR)
+	@echo "Building bootstrap GCC..."
+	@sleep 2  # Simulate build time
+	@touch $@
+
+$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: | $(BOOTSTRAP_BUILD_DIR)
+	@echo "Installing Linux headers..."
+	@sleep 1  # Simulate build time
+	@touch $@
+
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed | $(BOOTSTRAP_BUILD_DIR)
+	@echo "Building bootstrap glibc..."
+	@sleep 2  # Simulate build time
+	@touch $@
+
+$(BOOTSTRAP_OUT)/.libstdc++.installed: $(BOOTSTRAP_BUILD_DIR)/.glibc.installed | $(BOOTSTRAP_OUT)
+	@echo "Building bootstrap libstdc++..."
+	@sleep 1  # Simulate build time
+	@touch $@
+
+$(TARGET_BUILD_DIR)/.binutils.installed: $(BOOTSTRAP_OUT)/.bootstrap.done | $(TARGET_BUILD_DIR)
+	@echo "Building target binutils..."
+	@sleep 1  # Simulate build time
+	@touch $@
+
+$(TARGET_BUILD_DIR)/.gcc.installed: $(TARGET_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_OUT)/.bootstrap.done | $(TARGET_BUILD_DIR)
+	@echo "Building target GCC..."
+	@sleep 2  # Simulate build time
+	@touch $@
+
+$(TARGET_OUT)/.glibc.installed: $(TARGET_BUILD_DIR)/.gcc.installed | $(TARGET_OUT)
+	@echo "Building target glibc..."
+	@sleep 2  # Simulate build time
+	@touch $@
+
+$(TARGET_OUT)/.sysroot.done: $(TARGET_OUT)/.glibc.installed $(TARGET_BUILD_DIR)/.linux-headers.installed | $(TARGET_OUT)
+	@echo "Assembling sysroot..."
+	@sleep 1  # Simulate sysroot assembly
+	@touch $@
+
+$(TARGET_BUILD_DIR)/.linux-headers.installed: | $(TARGET_BUILD_DIR)
+	@echo "Installing Linux headers for target..."
+	@sleep 1  # Simulate build time
+	@touch $@
+
+clean:
+	rm -rf $(BUILD_DIR) $(OUT_DIR)
+
+clean-bootstrap:
+	rm -rf $(BUILD_DIR)/bootstrap $(OUT_DIR)/bootstrap
+
+clean-downloads:
+	rm -rf $(DL_DIR)
+
+clean-sources:
+	rm -rf $(SRC_DIR)
