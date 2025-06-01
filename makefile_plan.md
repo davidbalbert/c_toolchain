@@ -181,38 +181,14 @@ sysroot: glibc linux-headers
 bootstrap: bootstrap-libstdc++
 
 # User-facing component targets
-gcc: install-gcc
-binutils: install-binutils
-glibc: install-glibc
-linux-headers: install-linux-headers
-bootstrap-gcc: install-bootstrap-gcc
-bootstrap-binutils: install-bootstrap-binutils
-bootstrap-glibc: install-bootstrap-glibc
-bootstrap-libstdc++: install-bootstrap-libstdc++
-
-# User-facing step targets
-configure-gcc: build/$(HOST)/$(TARGET)/.gcc.configured
-build-gcc: build/$(HOST)/$(TARGET)/.gcc.built
-install-gcc: build/$(HOST)/$(TARGET)/.gcc.installed
-configure-binutils: build/$(HOST)/$(TARGET)/.binutils.configured
-build-binutils: build/$(HOST)/$(TARGET)/.binutils.built
-install-binutils: build/$(HOST)/$(TARGET)/.binutils.installed
-configure-glibc: build/$(HOST)/$(TARGET)/.glibc.configured
-build-glibc: build/$(HOST)/$(TARGET)/.glibc.built
-install-glibc: build/$(HOST)/$(TARGET)/.glibc.installed
-install-linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.installed
-
-# Bootstrap step targets
-configure-bootstrap-gcc: build/bootstrap/.gcc.configured
-build-bootstrap-gcc: build/bootstrap/.gcc.built
-install-bootstrap-gcc: build/bootstrap/.gcc.installed
-configure-bootstrap-binutils: build/bootstrap/.binutils.configured
-build-bootstrap-binutils: build/bootstrap/.binutils.built
-install-bootstrap-binutils: build/bootstrap/.binutils.installed
-configure-bootstrap-glibc: build/bootstrap/.glibc.configured
-build-bootstrap-glibc: build/bootstrap/.glibc.built
-install-bootstrap-glibc: build/bootstrap/.glibc.installed
-install-bootstrap-libstdc++: build/bootstrap/.libstdc++.installed
+gcc: build/$(HOST)/$(TARGET)/.gcc.installed
+binutils: build/$(HOST)/$(TARGET)/.binutils.installed
+glibc: build/$(HOST)/$(TARGET)/.glibc.installed
+linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.installed
+bootstrap-gcc: build/bootstrap/.gcc.installed
+bootstrap-binutils: build/bootstrap/.binutils.installed
+bootstrap-glibc: build/bootstrap/.glibc.installed
+bootstrap-libstdc++: build/bootstrap/.libstdc++.installed
 
 # Bootstrap phase - configure/build/install chain
 build/bootstrap/.binutils.configured: | src/binutils-$(BINUTILS_VERSION)/
@@ -320,6 +296,38 @@ src/linux-$(LINUX_VERSION)/: dl/linux-$(LINUX_VERSION).tar.gz patches/linux-$(LI
 # Download targets
 dl/%.tar.gz: $(CONFIG)
 	# Download and verify checksum
+
+# Clean targets
+clean:
+	rm -rf build/ out/
+
+clean-downloads:
+	rm -rf dl/
+
+clean-sources:
+	rm -rf src/
+
+# Component-specific clean targets
+clean-gcc:
+	rm -f build/$(HOST)/$(TARGET)/.gcc.*
+
+clean-binutils:
+	rm -f build/$(HOST)/$(TARGET)/.binutils.*
+
+clean-glibc:
+	rm -f build/$(HOST)/$(TARGET)/.glibc.*
+
+clean-bootstrap-gcc:
+	rm -f build/bootstrap/.gcc.*
+
+clean-bootstrap-binutils:
+	rm -f build/bootstrap/.binutils.*
+
+clean-bootstrap-glibc:
+	rm -f build/bootstrap/.glibc.*
+
+clean-bootstrap:
+	rm -rf build/bootstrap/
 ```
 
 ### Cross-Compilation Dependencies
