@@ -66,8 +66,8 @@ make toolchain TARGET=linux/x86_64 CONFIG=clang-toolchain.mk
 # Just download and verify sources
 make download
 
-# Build only bootstrap phase
-make bootstrap HOST=linux/aarch64 TARGET=linux/aarch64
+# Build only bootstrap phase (specifying HOST or TARGET other than)
+make bootstrap
 
 # Build final sysroot only (assumes bootstrap exists)
 make sysroot HOST=linux/aarch64 TARGET=linux/aarch64
@@ -80,10 +80,10 @@ make clean
 ```
 
 ### Variables
-- `HOST` - Optional: where the compiler runs (defaults to local system, e.g. linux/aarch64, linux/x86_64)
-- `TARGET` - Optional: what the compiler builds for (defaults to HOST)
-- `CONFIG` - Optional: config file (default: config.mk)
-- `BUILD_ROOT` - Optional: build directory (default: current directory)
+- `HOST` - Where the compiler runs (defaults to system)
+- `TARGET` - What the compiler builds for (defaults to HOST)
+- `CONFIG` - Config file (default: config.mk)
+- `BUILD_ROOT` - Build directory (default: current directory)
 
 ### File Structure Generated
 ```
@@ -104,6 +104,42 @@ out/
 3. **Granular control**: Individual phase targets available when needed
 4. **Parallel safe**: All targets support `make -j`
 5. **Resumable**: Can restart from any phase if previous phases complete
+
+## Config File Design
+
+### config.mk Example
+```makefile
+# Package versions
+GCC_VERSION := 15.1.0
+BINUTILS_VERSION := 2.44
+GLIBC_VERSION := 2.41
+LINUX_VERSION := 6.6.89
+
+# Expected SHA256 checksums
+GCC_SHA256 := 51b9919ea69c980d7a381db95d4be27edf73b21254eb13d752a08003b4d013b1
+BINUTILS_SHA256 := 0cdd76777a0dfd3dd3a63f215f030208ddb91c2361d2bcc02acec0f1c16b6a2e
+GLIBC_SHA256 := c7be6e25eeaf4b956f5d4d56a04d23e4db453fc07760f872903bb61a49519b80
+LINUX_SHA256 := 724f68742eeccf26e090f03dd8dfbf9c159d65f91d59b049e41f996fa41d9bc1
+```
+
+### Future Config Variations
+```makefile
+# clang-toolchain.mk
+COMPILER := clang
+LIBC := musl
+
+BINUTILS_VERSION := 2.44
+MUSL_VERSION := 1.2.4
+LINUX_VERSION := 6.6.89
+LLVM_VERSION := 18.0.0
+```
+
+### Config File Rules
+1. **Package versions and checksums** - Core responsibility
+2. **Build tool selection** - LIBC, COMPILER choices
+3. **No architecture info** - HOST/TARGET stay on command line
+4. **No reproducibility settings** - Always set appropriately by makefile
+5. **Makefile syntax** - Simple variable assignments for easy inclusion
 
 ## Next Steps
 
