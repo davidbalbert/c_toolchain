@@ -141,6 +141,10 @@ $(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)
 			[ -f "$$patch" ] && echo "Applying: $$(basename $$patch)" && (cd "$@" && patch -p1 < "$$patch"); \
 		done; \
 	fi
+	@if echo "$(notdir $@)" | grep -q "^gcc-"; then \
+		echo "Downloading GCC dependencies..."; \
+		(cd "$@" && ./contrib/download_prerequisites); \
+	fi
 
 clean:
 	rm -rf $(BUILD_DIR) $(OUT_DIR)
