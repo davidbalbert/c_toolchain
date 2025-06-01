@@ -146,10 +146,10 @@ LLVM_VERSION := 18.0.0
 ### Two-Phase Build Flow
 ```
 Downloads & Checksums
-├── gcc-15.1.0.tar.xz
-├── binutils-2.44.tar.xz
-├── glibc-2.41.tar.xz
-└── linux-6.6.89.tar.xz
+├── gcc-15.1.0.tar.gz
+├── binutils-2.44.tar.gz
+├── glibc-2.41.tar.gz
+└── linux-6.6.89.tar.gz
 
 Source Extraction & Patching
 ├── src/gcc-15.1.0/
@@ -228,13 +228,25 @@ build/$(HOST)/$(TARGET)/.linux-headers.done: | src/linux-$(LINUX_VERSION)/
 	# Install Linux headers for target
 	@mkdir -p $(dir $@) && touch $@
 
-# Source extraction (pattern rule)
-src/%/: dl/%.tar.xz
-	# Extract tarball and apply patches
+# Source extraction (version-specific patches)
+src/binutils-$(BINUTILS_VERSION)/: dl/binutils-$(BINUTILS_VERSION).tar.gz patches/binutils-$(BINUTILS_VERSION)/
+	# Extract tarball and apply binutils patches
+	@touch $@
+
+src/gcc-$(GCC_VERSION)/: dl/gcc-$(GCC_VERSION).tar.gz patches/gcc-$(GCC_VERSION)/
+	# Extract tarball and apply gcc patches
+	@touch $@
+
+src/glibc-$(GLIBC_VERSION)/: dl/glibc-$(GLIBC_VERSION).tar.gz patches/glibc-$(GLIBC_VERSION)/
+	# Extract tarball and apply glibc patches
+	@touch $@
+
+src/linux-$(LINUX_VERSION)/: dl/linux-$(LINUX_VERSION).tar.gz patches/linux-$(LINUX_VERSION)/
+	# Extract tarball and apply linux patches
 	@touch $@
 
 # Download targets
-dl/%.tar.xz: $(CONFIG)
+dl/%.tar.gz: $(CONFIG)
 	# Download and verify checksum
 ```
 
@@ -260,7 +272,7 @@ ifeq ($(IS_NATIVE),)
   # Cross builds need native toolchain first
   gcc: native-gcc
   binutils: native-binutils
-  
+
   # Native toolchain targets (only for cross builds)
   native-gcc: src/gcc-$(GCC_VERSION)/ native-binutils bootstrap-libstdc++
   native-binutils: src/binutils-$(BINUTILS_VERSION)/ bootstrap-libstdc++
