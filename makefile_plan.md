@@ -141,8 +141,75 @@ LLVM_VERSION := 18.0.0
 4. **No reproducibility settings** - Always set appropriately by makefile
 5. **Makefile syntax** - Simple variable assignments for easy inclusion
 
+## Dependency Graph
+
+### Two-Phase Build Flow
+```
+Downloads & Checksums
+├── gcc-15.1.0.tar.xz
+├── binutils-2.44.tar.xz  
+├── glibc-2.41.tar.xz
+└── linux-6.6.89.tar.xz
+
+Source Extraction & Patching
+├── src/gcc-15.1.0/
+├── src/binutils-2.44/
+├── src/glibc-2.41/
+└── src/linux-6.6.89/
+
+Phase 1: Bootstrap Toolchain
+├── bootstrap-binutils    (needs: binutils sources)
+├── bootstrap-gcc         (needs: gcc sources, bootstrap-binutils)
+├── linux-headers         (needs: linux sources)
+├── bootstrap-glibc       (needs: glibc sources, bootstrap-gcc, linux-headers)
+└── bootstrap-libstdc++   (needs: bootstrap-gcc, bootstrap-glibc)
+
+Phase 2: Final Toolchain
+├── binutils              (needs: binutils sources, bootstrap toolchain)
+├── gcc                   (needs: gcc sources, binutils, bootstrap toolchain)
+└── glibc                 (needs: glibc sources, gcc, bootstrap toolchain)
+```
+
+### Make Target Dependencies
+```makefile
+# Default config file
+CONFIG ?= config.mk
+
+# Top-level targets
+toolchain: gcc sysroot
+sysroot: glibc linux-headers
+bootstrap: bootstrap-libstdc++
+
+# Bootstrap phase dependencies
+bootstrap-binutils: src/binutils-$(BINUTILS_VERSION)/
+bootstrap-gcc: src/gcc-$(GCC_VERSION)/ bootstrap-binutils  
+linux-headers: src/linux-$(LINUX_VERSION)/
+bootstrap-glibc: src/glibc-$(GLIBC_VERSION)/ bootstrap-gcc linux-headers
+bootstrap-libstdc++: bootstrap-gcc bootstrap-glibc
+
+# Final phase dependencies (all need bootstrap toolchain)
+binutils: src/binutils-$(BINUTILS_VERSION)/ bootstrap-libstdc++
+gcc: src/gcc-$(GCC_VERSION)/ binutils bootstrap-libstdc++
+glibc: src/glibc-$(GLIBC_VERSION)/ gcc bootstrap-libstdc++
+
+# Source extraction (pattern rule)
+src/%/: dl/%.tar.xz
+	# Extract tarball and apply patches
+
+# Download targets
+dl/%.tar.xz: $(CONFIG)
+	# Download and verify checksum
+```
+
+### Key Insights
+1. **Bootstrap toolchain must complete** before any final phase builds
+2. **Clean glibc rebuild** ensures final toolchain uses properly built glibc
+3. **Parallel builds possible** within each phase but not across phases
+4. **Source extraction** happens automatically via pattern rule
+5. **Sysroot assembly** happens after final glibc is built
+6. **Downloads can happen in parallel** and early
+
 ## Next Steps
 
-1. **Model Dependencies** - Map two-phase build to make dependency graph
-2. **Draft Makefile Structure** - Create initial makefile organization
-3. **Implementation Plan** - Define migration steps from scripts
+1. **Draft Makefile Structure** - Create initial makefile organization
+2. **Implementation Plan** - Define migration steps from scripts
