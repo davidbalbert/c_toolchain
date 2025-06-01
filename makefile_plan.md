@@ -181,50 +181,122 @@ sysroot: glibc linux-headers
 bootstrap: bootstrap-libstdc++
 
 # User-facing component targets
-gcc: build/$(HOST)/$(TARGET)/.gcc.done
-binutils: build/$(HOST)/$(TARGET)/.binutils.done
-glibc: build/$(HOST)/$(TARGET)/.glibc.done
-linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.done
-bootstrap-gcc: build/bootstrap/.gcc.done
-bootstrap-binutils: build/bootstrap/.binutils.done
-bootstrap-glibc: build/bootstrap/.glibc.done
-bootstrap-libstdc++: build/bootstrap/.libstdc++.done
+gcc: install-gcc
+binutils: install-binutils
+glibc: install-glibc
+linux-headers: install-linux-headers
+bootstrap-gcc: install-bootstrap-gcc
+bootstrap-binutils: install-bootstrap-binutils
+bootstrap-glibc: install-bootstrap-glibc
+bootstrap-libstdc++: install-bootstrap-libstdc++
 
-# Bootstrap phase sentinel files
-build/bootstrap/.binutils.done: | src/binutils-$(BINUTILS_VERSION)/
-	# Configure, build, install bootstrap binutils
+# User-facing step targets
+configure-gcc: build/$(HOST)/$(TARGET)/.gcc.configured
+build-gcc: build/$(HOST)/$(TARGET)/.gcc.built
+install-gcc: build/$(HOST)/$(TARGET)/.gcc.installed
+configure-binutils: build/$(HOST)/$(TARGET)/.binutils.configured
+build-binutils: build/$(HOST)/$(TARGET)/.binutils.built
+install-binutils: build/$(HOST)/$(TARGET)/.binutils.installed
+configure-glibc: build/$(HOST)/$(TARGET)/.glibc.configured
+build-glibc: build/$(HOST)/$(TARGET)/.glibc.built
+install-glibc: build/$(HOST)/$(TARGET)/.glibc.installed
+install-linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.installed
+
+# Bootstrap step targets
+configure-bootstrap-gcc: build/bootstrap/.gcc.configured
+build-bootstrap-gcc: build/bootstrap/.gcc.built
+install-bootstrap-gcc: build/bootstrap/.gcc.installed
+configure-bootstrap-binutils: build/bootstrap/.binutils.configured
+build-bootstrap-binutils: build/bootstrap/.binutils.built
+install-bootstrap-binutils: build/bootstrap/.binutils.installed
+configure-bootstrap-glibc: build/bootstrap/.glibc.configured
+build-bootstrap-glibc: build/bootstrap/.glibc.built
+install-bootstrap-glibc: build/bootstrap/.glibc.installed
+install-bootstrap-libstdc++: build/bootstrap/.libstdc++.installed
+
+# Bootstrap phase - configure/build/install chain
+build/bootstrap/.binutils.configured: | src/binutils-$(BINUTILS_VERSION)/
+	# Configure bootstrap binutils
 	@mkdir -p $(dir $@) && touch $@
 
-build/bootstrap/.gcc.done: bootstrap-binutils | src/gcc-$(GCC_VERSION)/
-	# Configure, build, install bootstrap gcc
+build/bootstrap/.binutils.built: build/bootstrap/.binutils.configured
+	# Build bootstrap binutils
 	@mkdir -p $(dir $@) && touch $@
 
-build/bootstrap/.linux-headers.done: | src/linux-$(LINUX_VERSION)/
+build/bootstrap/.binutils.installed: build/bootstrap/.binutils.built
+	# Install bootstrap binutils
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.gcc.configured: bootstrap-binutils | src/gcc-$(GCC_VERSION)/
+	# Configure bootstrap gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.gcc.built: build/bootstrap/.gcc.configured
+	# Build bootstrap gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.gcc.installed: build/bootstrap/.gcc.built
+	# Install bootstrap gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.linux-headers.installed: | src/linux-$(LINUX_VERSION)/
 	# Install Linux headers
 	@mkdir -p $(dir $@) && touch $@
 
-build/bootstrap/.glibc.done: bootstrap-gcc linux-headers | src/glibc-$(GLIBC_VERSION)/
-	# Configure, build, install bootstrap glibc
+build/bootstrap/.glibc.configured: bootstrap-gcc linux-headers | src/glibc-$(GLIBC_VERSION)/
+	# Configure bootstrap glibc
 	@mkdir -p $(dir $@) && touch $@
 
-build/bootstrap/.libstdc++.done: bootstrap-gcc bootstrap-glibc
+build/bootstrap/.glibc.built: build/bootstrap/.glibc.configured
+	# Build bootstrap glibc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.glibc.installed: build/bootstrap/.glibc.built
+	# Install bootstrap glibc
+	@mkdir -p $(dir $@) && touch $@
+
+build/bootstrap/.libstdc++.installed: bootstrap-gcc bootstrap-glibc
 	# Build and install libstdc++
 	@mkdir -p $(dir $@) && touch $@
 
-# Final phase sentinel files
-build/$(HOST)/$(TARGET)/.binutils.done: bootstrap-libstdc++ | src/binutils-$(BINUTILS_VERSION)/
-	# Configure, build, install final binutils
+# Final phase - configure/build/install chain
+build/$(HOST)/$(TARGET)/.binutils.configured: bootstrap-libstdc++ | src/binutils-$(BINUTILS_VERSION)/
+	# Configure final binutils
 	@mkdir -p $(dir $@) && touch $@
 
-build/$(HOST)/$(TARGET)/.gcc.done: binutils bootstrap-libstdc++ | src/gcc-$(GCC_VERSION)/
-	# Configure, build, install final gcc
+build/$(HOST)/$(TARGET)/.binutils.built: build/$(HOST)/$(TARGET)/.binutils.configured
+	# Build final binutils
 	@mkdir -p $(dir $@) && touch $@
 
-build/$(HOST)/$(TARGET)/.glibc.done: gcc bootstrap-libstdc++ | src/glibc-$(GLIBC_VERSION)/
-	# Configure, build, install final glibc (clean)
+build/$(HOST)/$(TARGET)/.binutils.installed: build/$(HOST)/$(TARGET)/.binutils.built
+	# Install final binutils
 	@mkdir -p $(dir $@) && touch $@
 
-build/$(HOST)/$(TARGET)/.linux-headers.done: | src/linux-$(LINUX_VERSION)/
+build/$(HOST)/$(TARGET)/.gcc.configured: binutils bootstrap-libstdc++ | src/gcc-$(GCC_VERSION)/
+	# Configure final gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.gcc.built: build/$(HOST)/$(TARGET)/.gcc.configured
+	# Build final gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.gcc.installed: build/$(HOST)/$(TARGET)/.gcc.built
+	# Install final gcc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.glibc.configured: gcc bootstrap-libstdc++ | src/glibc-$(GLIBC_VERSION)/
+	# Configure final glibc (clean)
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.glibc.built: build/$(HOST)/$(TARGET)/.glibc.configured
+	# Build final glibc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.glibc.installed: build/$(HOST)/$(TARGET)/.glibc.built
+	# Install final glibc
+	@mkdir -p $(dir $@) && touch $@
+
+build/$(HOST)/$(TARGET)/.linux-headers.installed: | src/linux-$(LINUX_VERSION)/
 	# Install Linux headers for target
 	@mkdir -p $(dir $@) && touch $@
 
