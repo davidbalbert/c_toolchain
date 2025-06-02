@@ -2,15 +2,24 @@ CONFIG ?= config.mk
 
 MKTOOLCHAIN_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+export LC_ALL := C.UTF-8
+
 ifeq ($(filter -j%,$(MAKEFLAGS)),)
   MAKEFLAGS += -j$(shell nproc)
 endif
 
 include $(CONFIG)
 
+
 BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
 HOST ?= $(BUILD)
 TARGET ?= $(HOST)
+
+# Convert os/arch to GNU triple (e.g., linux/aarch64 -> aarch64-linux-gnu)
+os_arch_to_triple = $(word 2,$(subst /, ,$(1)))-$(word 1,$(subst /, ,$(1)))-gnu
+BUILD_TRIPLE := $(call os_arch_to_triple,$(BUILD))
+HOST_TRIPLE := $(call os_arch_to_triple,$(HOST))
+TARGET_TRIPLE := $(call os_arch_to_triple,$(TARGET))
 
 BUILD_ROOT ?= .
 BUILD_DIR := $(BUILD_ROOT)/build
@@ -20,95 +29,148 @@ SRC_DIR := $(BUILD_ROOT)/src
 
 IS_NATIVE := $(and $(filter $(HOST),$(BUILD)),$(filter $(TARGET),$(BUILD)))
 
-BOOTSTRAP_BUILD_DIR := $(BUILD_DIR)/bootstrap
-TARGET_BUILD_DIR := $(BUILD_DIR)/$(HOST)/$(TARGET)
+# BB = bootstrap build, B = target build
+BB := $(BUILD_DIR)/bootstrap/$(TOOLCHAIN_NAME)
+B := $(BUILD_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 
-BOOTSTRAP_OUT := $(OUT_DIR)/bootstrap/$(TOOLCHAIN_NAME)
-TARGET_OUT := $(OUT_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
+# BO = bootstrap out, O = target out
+BO := $(OUT_DIR)/bootstrap/$(TOOLCHAIN_NAME)
+O := $(OUT_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 
-$(BUILD_DIR) $(OUT_DIR) $(DL_DIR) $(SRC_DIR):
+$(DL_DIR) $(SRC_DIR):
 	mkdir -p $@
 
-$(BOOTSTRAP_BUILD_DIR) $(TARGET_BUILD_DIR):
+$(BB) $(B):
 	mkdir -p $@
 
-$(BOOTSTRAP_OUT) $(TARGET_OUT):
+$(BO)/toolchain $(O)/toolchain $(O)/sysroot:
 	mkdir -p $@
+
+$(BO)/toolchain/sysroot: $(O)/sysroot $(BO)/toolchain
+	ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@
+
+$(O)/toolchain/sysroot: $(O)/sysroot
+	ln -sfn ../sysroot $@
 
 .DEFAULT_GOAL := toolchain
 
-.PHONY: toolchain bootstrap download clean test-parallel
+.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-binutils-configure bootstrap-binutils-build
 
-toolchain: $(TARGET_OUT)/.toolchain.done
+toolchain: $(O)/.toolchain.done
 
-bootstrap: $(BOOTSTRAP_OUT)/.bootstrap.done
+bootstrap: $(BO)/.bootstrap.done
 
 # Test target for parallel builds
 test-parallel: $(DL_DIR) $(SRC_DIR) $(BUILD_DIR) $(OUT_DIR)
 	@echo "Testing parallel infrastructure..."
 	@echo "Build system: $(BUILD)"
+	@echo "Build triple: $(BUILD_TRIPLE)"
 	@echo "Host: $(HOST)"
 	@echo "Target: $(TARGET)"
 	@echo "Is native: $(IS_NATIVE)"
-	@echo "Bootstrap build dir: $(BOOTSTRAP_BUILD_DIR)"
-	@echo "Target build dir: $(TARGET_BUILD_DIR)"
+	@echo "Bootstrap build dir: $(BB)"
+	@echo "Target build dir: $(B)"
 	@echo "Config: $(CONFIG)"
 	@echo "GCC Version: $(GCC_VERSION)"
 
-$(BOOTSTRAP_OUT)/.bootstrap.done: $(BOOTSTRAP_OUT)/.libstdc++.installed | $(BOOTSTRAP_OUT)
+$(BO)/.bootstrap.done: $(BO)/.libstdc++.installed | $(BO)
 	@echo "Bootstrap toolchain complete"
 	@touch $@
 
-$(TARGET_OUT)/.toolchain.done: $(TARGET_OUT)/.glibc.installed $(TARGET_OUT)/.sysroot.done | $(TARGET_OUT)
+$(O)/.toolchain.done: $(O)/.glibc.installed $(O)/.sysroot.done | $(O)
 	@echo "Target toolchain complete"
 	@touch $@
 
-$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: | $(BOOTSTRAP_BUILD_DIR)
-	@echo "Building bootstrap binutils..."
-	@sleep 1  # Simulate build time
-	@touch $@
 
-$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed | $(BOOTSTRAP_BUILD_DIR)
+bootstrap-binutils: $(BB)/.binutils.installed
+bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-binutils: SOURCE_DATE_EPOCH := $(shell cat $(BB)/binutils/src/.timestamp 2>/dev/null || echo 1)
+
+BINUTILS_CONFIG := \
+	--host=$(BUILD_TRIPLE) \
+	--target=$(BUILD_TRIPLE) \
+	--prefix= \
+	--with-sysroot=/sysroot \
+	--program-prefix=$(BUILD_TRIPLE)- \
+	--disable-shared \
+	--enable-new-dtags \
+	--disable-werror
+
+$(BB)/binutils/src: $(BB)/.binutils.linked
+$(BB)/binutils/build:
+	mkdir -p $@
+
+$(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(BB)/binutils
+	ln -sfn $(abspath $<) $(BB)/binutils/src
+	touch $@
+
+$(BB)/.binutils.configured: $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolchain/sysroot
+	@echo "Configuring bootstrap binutils..."
+	cd $(BB)/binutils/build && \
+		CFLAGS="$(CFLAGS)" \
+		CXXFLAGS="$(CXXFLAGS)" \
+		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
+		../src/configure $(BINUTILS_CONFIG)
+	touch $@
+
+$(BB)/.binutils.compiled: $(BB)/.binutils.configured
+	@echo "Building bootstrap binutils..."
+	cd $(BB)/binutils/build && $(MAKE)
+	touch $@
+
+$(BB)/.binutils.installed: $(BB)/.binutils.compiled
+	@echo "Installing bootstrap binutils..."
+	cd $(BB)/binutils/build && \
+		TMPDIR=$$(mktemp -d) && \
+		$(MAKE) DESTDIR="$$TMPDIR" install && \
+		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
+		$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
+		cp -a "$$TMPDIR"/* $(abspath $(BO))/toolchain/ && \
+		rm -rf "$$TMPDIR"
+	touch $@
+
+$(BB)/.gcc.installed: $(BB)/.binutils.installed | $(BB)
 	@echo "Building bootstrap GCC..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
-$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: | $(BOOTSTRAP_BUILD_DIR)
+$(BB)/.linux-headers.installed: | $(BB)
 	@echo "Installing Linux headers..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
-$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed | $(BOOTSTRAP_BUILD_DIR)
+$(BB)/.glibc.installed: $(BB)/.gcc.installed $(BB)/.linux-headers.installed | $(BB)
 	@echo "Building bootstrap glibc..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
-$(BOOTSTRAP_OUT)/.libstdc++.installed: $(BOOTSTRAP_BUILD_DIR)/.glibc.installed | $(BOOTSTRAP_OUT)
+$(BO)/.libstdc++.installed: $(BB)/.glibc.installed | $(BO)
 	@echo "Building bootstrap libstdc++..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
-$(TARGET_BUILD_DIR)/.binutils.installed: $(BOOTSTRAP_OUT)/.bootstrap.done | $(TARGET_BUILD_DIR)
+$(B)/.binutils.installed: $(BO)/.bootstrap.done | $(B)
 	@echo "Building target binutils..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
-$(TARGET_BUILD_DIR)/.gcc.installed: $(TARGET_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_OUT)/.bootstrap.done | $(TARGET_BUILD_DIR)
+$(B)/.gcc.installed: $(B)/.binutils.installed $(BO)/.bootstrap.done | $(B)
 	@echo "Building target GCC..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
-$(TARGET_OUT)/.glibc.installed: $(TARGET_BUILD_DIR)/.gcc.installed | $(TARGET_OUT)
+$(O)/.glibc.installed: $(B)/.gcc.installed | $(O)
 	@echo "Building target glibc..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
-$(TARGET_OUT)/.sysroot.done: $(TARGET_OUT)/.glibc.installed $(TARGET_BUILD_DIR)/.linux-headers.installed | $(TARGET_OUT)
+$(O)/.sysroot.done: $(O)/.glibc.installed $(B)/.linux-headers.installed | $(O)
 	@echo "Assembling sysroot..."
 	@sleep 1  # Simulate sysroot assembly
 	@touch $@
 
-$(TARGET_BUILD_DIR)/.linux-headers.installed: | $(TARGET_BUILD_DIR)
+$(B)/.linux-headers.installed: | $(B)
 	@echo "Installing Linux headers for target..."
 	@sleep 1  # Simulate build time
 	@touch $@
@@ -139,7 +201,7 @@ $(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)
 	@echo "Extracting $(TARBALL)..."
 	@tar -xf "$(TARBALL)" -C "$(SRC_DIR)"
 	@timestamp=$$(tar -tvf "$(TARBALL)" | awk '{print $$4" "$$5}' | sort -r | head -1 | xargs -I {} date -d "{}" +%s 2>/dev/null || echo 1); \
-	echo "export SOURCE_DATE_EPOCH=$$timestamp" > "$@/.timestamp"
+	echo "$$timestamp" > "$@/.timestamp"
 	@if [ -d "$(MKTOOLCHAIN_ROOT)patches/$(notdir $@)" ]; then \
 		for patch in $(MKTOOLCHAIN_ROOT)patches/$(notdir $@)/*; do \
 			[ -f "$$patch" ] && echo "Applying: $$(basename $$patch)" && (cd "$@" && patch -p1 < "$$patch"); \

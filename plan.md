@@ -393,12 +393,12 @@ endif
    - Design sentinel file structure for parallel safety
    - Test with `make -j` from the start
 
-3. **Implement download system**
+3. ✅ **Implement download system**
    - Port `script/download.sh` logic to makefile targets
    - Create `dl/%.tar.gz: $(CONFIG)` rule with checksum verification
    - Test downloading all packages (can be parallel)
 
-4. **Implement source extraction**
+4. ✅ **Implement source extraction**
    - Create version-specific extraction rules
    - Port patch application logic from scripts
    - Test extraction of all packages with patches
