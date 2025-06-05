@@ -404,14 +404,14 @@ endif
    - Test extraction of all packages with patches
 
 ### Phase 2: Bootstrap Build System (Native Only)
-5. **Port bootstrap-binutils**
+5. ✅ **Port bootstrap-binutils**
    - Convert `script/build-binutils.sh --bootstrap` to makefile rule
    - Create `build/bootstrap/.binutils.installed` target with parallel-safe rules
    - Test bootstrap binutils build
 
 6. **Port bootstrap-gcc**
    - Convert `script/build-gcc.sh --bootstrap` to makefile rule
-   - Create `build/bootstrap/.gcc.installed` target with job server support
+   - Create `build/bootstrap/.gcc.installed`, etc. targets with job server support
    - Test bootstrap gcc build
 
 7. **Port linux-headers and bootstrap-glibc**

@@ -151,6 +151,8 @@ cd "$GCC_BUILD_DIR"
 CONFIGURE_OPTIONS=(
     "--host=$HOST"
     "--target=$TARGET"
+    "--prefix="
+    "--with-sysroot=/"
     "--enable-default-pie"
     "--enable-default-ssp"
     "--disable-multilib"
@@ -159,8 +161,6 @@ CONFIGURE_OPTIONS=(
 )
 
 if [ "$BOOTSTRAP" == "true" ]; then
-    CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
-    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--with-glibc-version=$GLIBC_VERSION")
     CONFIGURE_OPTIONS+=("--with-newlib")
     CONFIGURE_OPTIONS+=("--disable-nls")
@@ -175,11 +175,6 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--without-headers")
     CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else
-    # Prefix is "" instead of "/" so that configure will see sysroot as a child of prefix
-    # and treat the sysroot as a relative path. Necessary because configure essentially does
-    # is_relative = $prefix == $sysroot || $prefix/* == $sysroot.
-    CONFIGURE_OPTIONS+=("--prefix=")
-    CONFIGURE_OPTIONS+=("--with-sysroot=/sysroot")
     CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")

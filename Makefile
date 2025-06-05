@@ -2,6 +2,7 @@ CONFIG ?= config.mk
 
 MKTOOLCHAIN_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# Reproducable build settings
 export LC_ALL := C.UTF-8
 
 ifeq ($(filter -j%,$(MAKEFLAGS)),)
@@ -9,7 +10,6 @@ ifeq ($(filter -j%,$(MAKEFLAGS)),)
 endif
 
 include $(CONFIG)
-
 
 BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
 HOST ?= $(BUILD)
@@ -37,10 +37,26 @@ B := $(BUILD_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 BO := $(OUT_DIR)/bootstrap/$(TOOLCHAIN_NAME)
 O := $(OUT_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 
+# Global path setup based on script logic
+NATIVE_PREFIX := $(OUT_DIR)/$(BUILD)/$(TOOLCHAIN_NAME)/toolchain
+BOOTSTRAP_PREFIX := $(BO)/toolchain
+TARGET_PREFIX := $(O)/toolchain
+SYSROOT := $(O)/sysroot
+
+ifeq ($(IS_NATIVE),)
+  # Cross build: native prefix only
+  export PATH := $(NATIVE_PREFIX)/bin:$(PATH)
+else
+  export PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
+endif
+
 $(DL_DIR) $(SRC_DIR):
 	mkdir -p $@
 
 $(BB) $(B):
+	mkdir -p $@
+
+$(BB)/binutils $(BB)/gcc:
 	mkdir -p $@
 
 $(BO)/toolchain $(O)/toolchain $(O)/sysroot:
@@ -54,7 +70,7 @@ $(O)/toolchain/sysroot: $(O)/sysroot
 
 .DEFAULT_GOAL := toolchain
 
-.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-binutils-configure bootstrap-binutils-build
+.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc
 
 toolchain: $(O)/.toolchain.done
 
@@ -101,7 +117,7 @@ $(BB)/binutils/src: $(BB)/.binutils.linked
 $(BB)/binutils/build:
 	mkdir -p $@
 
-$(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(BB)/binutils
+$(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
 	ln -sfn $(abspath $<) $(BB)/binutils/src
 	touch $@
 
@@ -130,10 +146,72 @@ $(BB)/.binutils.installed: $(BB)/.binutils.compiled
 		rm -rf "$$TMPDIR"
 	touch $@
 
-$(BB)/.gcc.installed: $(BB)/.binutils.installed | $(BB)
-	@echo "Building bootstrap GCC..."
-	@sleep 2  # Simulate build time
-	@touch $@
+bootstrap-gcc: $(BB)/.gcc.installed
+bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
+
+GCC_BASE_CONFIG := \
+	--host=$(HOST_TRIPLE) \
+	--target=$(TARGET_TRIPLE) \
+	--prefix= \
+	--with-sysroot=/ \
+	--enable-default-pie \
+	--enable-default-ssp \
+	--disable-multilib \
+	--disable-bootstrap \
+	--enable-languages=c,c++
+
+GCC_BOOTSTRAP_CONFIG := \
+	$(GCC_BASE_CONFIG) \
+	--with-glibc-version=$(GLIBC_VERSION) \
+	--with-newlib \
+	--disable-nls \
+	--disable-shared \
+	--disable-threads \
+	--disable-libatomic \
+	--disable-libgomp \
+	--disable-libquadmath \
+	--disable-libssp \
+	--disable-libvtv \
+	--disable-libstdcxx \
+	--without-headers \
+	--with-gxx-include-dir=/usr/include/c++/$(GCC_VERSION)
+
+$(BB)/gcc/src: $(BB)/.gcc.linked
+$(BB)/gcc/build:
+	mkdir -p $@
+
+$(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
+	ln -sfn $(abspath $<) $(BB)/gcc/src
+	touch $@
+
+$(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build $(BB)/.binutils.installed
+	@echo "Configuring bootstrap gcc..."
+	cd $(BB)/gcc/build && \
+		CFLAGS="$(CFLAGS)" \
+		CXXFLAGS="$(CXXFLAGS)" \
+		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
+		../src/configure $(GCC_BOOTSTRAP_CONFIG)
+	touch $@
+
+$(BB)/.gcc.compiled: $(BB)/.gcc.configured
+	@echo "Building bootstrap gcc..."
+	cd $(BB)/gcc/build && \
+		$(MAKE) configure-gcc && \
+		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
+		$(MAKE)
+	touch $@
+
+$(BB)/.gcc.installed: $(BB)/.gcc.compiled
+	@echo "Installing bootstrap gcc..."
+	cd $(BB)/gcc/build && \
+		TMPDIR=$$(mktemp -d) && \
+		$(MAKE) DESTDIR="$$TMPDIR" install && \
+		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
+		cp -a "$$TMPDIR"/* $(abspath $(BO))/toolchain/ && \
+		rm -rf "$$TMPDIR"
+	touch $@
 
 $(BB)/.linux-headers.installed: | $(BB)
 	@echo "Installing Linux headers..."
