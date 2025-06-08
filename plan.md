@@ -416,7 +416,7 @@ endif
 
 7. **Port linux-headers and bootstrap-glibc**
    - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
-   - Create header installation and bootstrap glibc targets with `+` prefixes
+   - Create header installation and bootstrap glibc targets
    - Test complete bootstrap toolchain
 
 ### Phase 3: Final Build System (Native Only)

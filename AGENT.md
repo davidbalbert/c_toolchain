@@ -10,7 +10,7 @@
 
 - **Reproducibility flags**:
   - `-ffile-prefix-map=ACTUAL_PATH=FIXED_PATH`
-  - `SOURCE_DATE_EPOCH=1`
+  - `SOURCE_DATE_EPOCH=MODIFIED_DATE_OF_SOURCE_FILES_IN_TARBALL`
   - `LC_ALL=C.UTF-8`
 
 ## Special Notes
