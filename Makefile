@@ -77,19 +77,6 @@ toolchain: $(O)/.toolchain.done
 
 bootstrap: $(BO)/.bootstrap.done
 
-# Test target for parallel builds
-test-parallel: $(DL_DIR) $(SRC_DIR) $(BUILD_DIR) $(OUT_DIR)
-	@echo "Testing parallel infrastructure..."
-	@echo "Build system: $(BUILD)"
-	@echo "Build triple: $(BUILD_TRIPLE)"
-	@echo "Host: $(HOST)"
-	@echo "Target: $(TARGET)"
-	@echo "Is native: $(IS_NATIVE)"
-	@echo "Bootstrap build dir: $(BB)"
-	@echo "Target build dir: $(B)"
-	@echo "Config: $(CONFIG)"
-	@echo "GCC Version: $(GCC_VERSION)"
-
 $(BO)/.bootstrap.done: $(BO)/.libstdc++.installed | $(BO)
 	@echo "Bootstrap toolchain complete"
 	@touch $@
@@ -97,7 +84,6 @@ $(BO)/.bootstrap.done: $(BO)/.libstdc++.installed | $(BO)
 $(O)/.toolchain.done: $(O)/.glibc.installed $(O)/.sysroot.done | $(O)
 	@echo "Target toolchain complete"
 	@touch $@
-
 
 bootstrap-binutils: $(BB)/.binutils.installed
 bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
