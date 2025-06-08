@@ -409,7 +409,7 @@ endif
    - Create `build/bootstrap/.binutils.installed` target with parallel-safe rules
    - Test bootstrap binutils build
 
-6. **Port bootstrap-gcc**
+6. ✅ **Port bootstrap-gcc**
    - Convert `script/build-gcc.sh --bootstrap` to makefile rule
    - Create `build/bootstrap/.gcc.installed`, etc. targets with job server support
    - Test bootstrap gcc build

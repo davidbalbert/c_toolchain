@@ -109,7 +109,6 @@ $(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
 	touch $@
 
 $(BB)/.binutils.configured: $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolchain/sysroot
-	@echo "Configuring bootstrap binutils..."
 	cd $(BB)/binutils/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
@@ -118,12 +117,10 @@ $(BB)/.binutils.configured: $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolch
 	touch $@
 
 $(BB)/.binutils.compiled: $(BB)/.binutils.configured
-	@echo "Building bootstrap binutils..."
 	cd $(BB)/binutils/build && $(MAKE)
 	touch $@
 
 $(BB)/.binutils.installed: $(BB)/.binutils.compiled
-	@echo "Installing bootstrap binutils..."
 	cd $(BB)/binutils/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
@@ -175,7 +172,6 @@ $(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
 	touch $@
 
 $(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build bootstrap-binutils
-	@echo "Configuring bootstrap gcc..."
 	cd $(BB)/gcc/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
@@ -184,7 +180,6 @@ $(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build bootstrap-binutils
 	touch $@
 
 $(BB)/.gcc.compiled: $(BB)/.gcc.configured
-	@echo "Building bootstrap gcc..."
 	cd $(BB)/gcc/build && \
 		$(MAKE) configure-gcc && \
 		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
@@ -192,7 +187,6 @@ $(BB)/.gcc.compiled: $(BB)/.gcc.configured
 	touch $@
 
 $(BB)/.gcc.installed: $(BB)/.gcc.compiled
-	@echo "Installing bootstrap gcc..."
 	cd $(BB)/gcc/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
@@ -202,42 +196,34 @@ $(BB)/.gcc.installed: $(BB)/.gcc.compiled
 	touch $@
 
 $(BB)/.linux-headers.installed: | $(BB)
-	@echo "Installing Linux headers..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
 $(BB)/.glibc.installed: $(BB)/.gcc.installed $(BB)/.linux-headers.installed | $(BB)
-	@echo "Building bootstrap glibc..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
 $(BO)/.libstdc++.installed: $(BB)/.glibc.installed | $(BO)
-	@echo "Building bootstrap libstdc++..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
 $(B)/.binutils.installed: $(BO)/.bootstrap.done | $(B)
-	@echo "Building target binutils..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
 $(B)/.gcc.installed: $(B)/.binutils.installed $(BO)/.bootstrap.done | $(B)
-	@echo "Building target GCC..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
 $(O)/.glibc.installed: $(B)/.gcc.installed | $(O)
-	@echo "Building target glibc..."
 	@sleep 2  # Simulate build time
 	@touch $@
 
 $(O)/.sysroot.done: $(O)/.glibc.installed $(B)/.linux-headers.installed | $(O)
-	@echo "Assembling sysroot..."
 	@sleep 1  # Simulate sysroot assembly
 	@touch $@
 
 $(B)/.linux-headers.installed: | $(B)
-	@echo "Installing Linux headers for target..."
 	@sleep 1  # Simulate build time
 	@touch $@
 
