@@ -45,9 +45,9 @@ SYSROOT := $(O)/sysroot
 
 ifeq ($(IS_NATIVE),)
   # Cross build: native prefix only
-  export PATH := $(NATIVE_PREFIX)/bin:$(PATH)
+  export PATH := $(abspath $(NATIVE_PREFIX)/bin:$(PATH))
 else
-  export PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
+  export PATH := $(abspath $(NATIVE_PREFIX)/bin):$(abspath $(BOOTSTRAP_PREFIX)/bin:$(PATH))
 endif
 
 $(DL_DIR) $(SRC_DIR):
@@ -155,7 +155,8 @@ GCC_BASE_CONFIG := \
 	--host=$(HOST_TRIPLE) \
 	--target=$(TARGET_TRIPLE) \
 	--prefix= \
-	--with-sysroot=/ \
+	--with-sysroot=/sysroot \
+	--with-build-sysroot=$(abspath $(SYSROOT)) \
 	--enable-default-pie \
 	--enable-default-ssp \
 	--disable-multilib \
@@ -176,7 +177,7 @@ GCC_BOOTSTRAP_CONFIG := \
 	--disable-libvtv \
 	--disable-libstdcxx \
 	--without-headers \
-	--with-gxx-include-dir=/usr/include/c++/$(GCC_VERSION)
+	--with-gxx-include-dir=$(abspath $(SYSROOT))/usr/include/c++/$(GCC_VERSION)
 
 $(BB)/gcc/src: $(BB)/.gcc.linked
 $(BB)/gcc/build:

@@ -151,6 +151,9 @@ cd "$GCC_BUILD_DIR"
 CONFIGURE_OPTIONS=(
     "--host=$HOST"
     "--target=$TARGET"
+    "--prefix="
+    "--with-sysroot=/sysroot"
+    "--with-build-sysroot=$SYSROOT"
     "--enable-default-pie"
     "--enable-default-ssp"
     "--disable-multilib"
@@ -159,8 +162,6 @@ CONFIGURE_OPTIONS=(
 )
 
 if [ "$BOOTSTRAP" == "true" ]; then
-    CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
-    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--with-glibc-version=$GLIBC_VERSION")
     CONFIGURE_OPTIONS+=("--with-newlib")
     CONFIGURE_OPTIONS+=("--disable-nls")
@@ -175,9 +176,6 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--without-headers")
     CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
 else
-    CONFIGURE_OPTIONS+=("--prefix=")
-    CONFIGURE_OPTIONS+=("--with-sysroot=/sysroot")
-    CONFIGURE_OPTIONS+=("--with-build-sysroot=$SYSROOT")
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")
 

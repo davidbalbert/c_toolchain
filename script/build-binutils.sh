@@ -136,22 +136,13 @@ cd "$BINUTILS_BUILD_DIR"
 CONFIGURE_OPTIONS=(
     "--host=$HOST"
     "--target=$TARGET"
+    "--prefix="
+    "--with-sysroot=/sysroot"
     "--program-prefix=$TARGET-"
     "--disable-shared"
     "--enable-new-dtags"
     "--disable-werror"
 )
-
-if [ "$BOOTSTRAP" == "true" ]; then
-    CONFIGURE_OPTIONS+=("--prefix=$PREFIX")
-    CONFIGURE_OPTIONS+=("--with-sysroot=$SYSROOT")
-else
-    # Prefix is "" instead of "/" so that configure will see sysroot as a child of prefix
-    # and treat the sysroot as a relative path. Necessary because configure essentially does
-    # is_relative = $prefix == $sysroot || $prefix/* == $sysroot.
-    CONFIGURE_OPTIONS+=("--prefix=")
-    CONFIGURE_OPTIONS+=("--with-sysroot=/sysroot")
-fi
 
 if [ "$CROSS" = true ] || [ "$BOOTSTRAP" = true ]; then
     "../src/configure" \
