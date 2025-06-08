@@ -64,7 +64,9 @@ $(BO)/toolchain $(O)/toolchain $(O)/sysroot:
 	mkdir -p $@
 
 $(BO)/toolchain/sysroot: $(O)/sysroot $(BO)/toolchain
-	ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@
+	@if [ ! -L $@ ]; then \
+		ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@; \
+	fi
 
 $(O)/toolchain/sysroot: $(O)/sysroot
 	ln -sfn ../sysroot $@
@@ -104,7 +106,7 @@ $(BB)/binutils/src: $(BB)/.binutils.linked
 $(BB)/binutils/build:
 	mkdir -p $@
 
-$(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
+$(BB)/.binutils.linked: | $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(BB)/binutils
 	ln -sfn $< $(BB)/binutils/src
 	touch $@
 
@@ -116,11 +118,11 @@ $(BB)/.binutils.configured: | $(BB)/binutils/src $(BB)/binutils/build $(BO)/tool
 		../src/configure $(BINUTILS_CONFIG)
 	touch $@
 
-$(BB)/.binutils.compiled: $(BB)/.binutils.configured
+$(BB)/.binutils.compiled: | $(BB)/.binutils.configured
 	cd $(BB)/binutils/build && $(MAKE)
 	touch $@
 
-$(BB)/.binutils.installed: $(BB)/.binutils.compiled
+$(BB)/.binutils.installed: | $(BB)/.binutils.compiled
 	cd $(BB)/binutils/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
@@ -130,7 +132,7 @@ $(BB)/.binutils.installed: $(BB)/.binutils.compiled
 		rm -rf "$$TMPDIR"
 	touch $@
 
-bootstrap-gcc: $(BB)/.gcc.installed
+bootstrap-gcc: | $(BB)/.gcc.installed
 bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
@@ -167,11 +169,11 @@ $(BB)/gcc/src: $(BB)/.gcc.linked
 $(BB)/gcc/build:
 	mkdir -p $@
 
-$(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
+$(BB)/.gcc.linked: | $(SRC_DIR)/gcc-$(GCC_VERSION) $(BB)/gcc
 	ln -sfn $< $(BB)/gcc/src
 	touch $@
 
-$(BB)/.gcc.configured: bootstrap-binutils | $(BB)/gcc/src $(BB)/gcc/build $(BO)/toolchain/sysroot
+$(BB)/.gcc.configured: | bootstrap-binutils $(BB)/gcc/src $(BB)/gcc/build $(BO)/toolchain/sysroot
 	cd $(BB)/gcc/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
@@ -179,14 +181,14 @@ $(BB)/.gcc.configured: bootstrap-binutils | $(BB)/gcc/src $(BB)/gcc/build $(BO)/
 		../src/configure $(GCC_BOOTSTRAP_CONFIG)
 	touch $@
 
-$(BB)/.gcc.compiled: $(BB)/.gcc.configured
+$(BB)/.gcc.compiled: | $(BB)/.gcc.configured
 	cd $(BB)/gcc/build && \
 		$(MAKE) configure-gcc && \
 		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
 		$(MAKE)
 	touch $@
 
-$(BB)/.gcc.installed: $(BB)/.gcc.compiled
+$(BB)/.gcc.installed: | $(BB)/.gcc.compiled
 	cd $(BB)/gcc/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
