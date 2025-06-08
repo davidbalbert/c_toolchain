@@ -108,7 +108,7 @@ $(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
 	ln -sfn $< $(BB)/binutils/src
 	touch $@
 
-$(BB)/.binutils.configured: $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolchain/sysroot
+$(BB)/.binutils.configured: | $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolchain/sysroot
 	cd $(BB)/binutils/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
@@ -171,7 +171,7 @@ $(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
 	ln -sfn $< $(BB)/gcc/src
 	touch $@
 
-$(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build bootstrap-binutils
+$(BB)/.gcc.configured: bootstrap-binutils | $(BB)/gcc/src $(BB)/gcc/build $(BO)/toolchain/sysroot
 	cd $(BB)/gcc/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
