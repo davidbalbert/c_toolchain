@@ -22,6 +22,7 @@ HOST_TRIPLE := $(call os_arch_to_triple,$(HOST))
 TARGET_TRIPLE := $(call os_arch_to_triple,$(TARGET))
 
 BUILD_ROOT ?= .
+BUILD_ROOT := $(abspath $(BUILD_ROOT))
 BUILD_DIR := $(BUILD_ROOT)/build
 OUT_DIR := $(BUILD_ROOT)/out
 DL_DIR := $(BUILD_ROOT)/dl
@@ -45,9 +46,9 @@ SYSROOT := $(O)/sysroot
 
 ifeq ($(IS_NATIVE),)
   # Cross build: native prefix only
-  export PATH := $(abspath $(NATIVE_PREFIX)/bin:$(PATH))
+  export PATH := $(NATIVE_PREFIX)/bin:$(PATH)
 else
-  export PATH := $(abspath $(NATIVE_PREFIX)/bin):$(abspath $(BOOTSTRAP_PREFIX)/bin:$(PATH))
+  export PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
 endif
 
 $(DL_DIR) $(SRC_DIR):
@@ -99,8 +100,8 @@ $(O)/.toolchain.done: $(O)/.glibc.installed $(O)/.sysroot.done | $(O)
 
 
 bootstrap-binutils: $(BB)/.binutils.installed
-bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
-bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
+bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-binutils: SOURCE_DATE_EPOCH := $(shell cat $(BB)/binutils/src/.timestamp 2>/dev/null || echo 1)
 
 BINUTILS_CONFIG := \
@@ -118,7 +119,7 @@ $(BB)/binutils/build:
 	mkdir -p $@
 
 $(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
-	ln -sfn $(abspath $<) $(BB)/binutils/src
+	ln -sfn $< $(BB)/binutils/src
 	touch $@
 
 $(BB)/.binutils.configured: $(BB)/binutils/src $(BB)/binutils/build $(BO)/toolchain/sysroot
@@ -142,13 +143,13 @@ $(BB)/.binutils.installed: $(BB)/.binutils.compiled
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
 		$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
-		cp -a "$$TMPDIR"/* $(abspath $(BO))/toolchain/ && \
+		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
 
 bootstrap-gcc: $(BB)/.gcc.installed
-bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
-bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(abspath $(SRC_DIR))=. -ffile-prefix-map=$(abspath $(BB))=.
+bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
+bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
 
 GCC_BASE_CONFIG := \
@@ -156,7 +157,7 @@ GCC_BASE_CONFIG := \
 	--target=$(TARGET_TRIPLE) \
 	--prefix= \
 	--with-sysroot=/sysroot \
-	--with-build-sysroot=$(abspath $(SYSROOT)) \
+	--with-build-sysroot=$(SYSROOT) \
 	--enable-default-pie \
 	--enable-default-ssp \
 	--disable-multilib \
@@ -177,17 +178,17 @@ GCC_BOOTSTRAP_CONFIG := \
 	--disable-libvtv \
 	--disable-libstdcxx \
 	--without-headers \
-	--with-gxx-include-dir=$(abspath $(SYSROOT))/usr/include/c++/$(GCC_VERSION)
+	--with-gxx-include-dir=$(SYSROOT)/usr/include/c++/$(GCC_VERSION)
 
 $(BB)/gcc/src: $(BB)/.gcc.linked
 $(BB)/gcc/build:
 	mkdir -p $@
 
 $(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
-	ln -sfn $(abspath $<) $(BB)/gcc/src
+	ln -sfn $< $(BB)/gcc/src
 	touch $@
 
-$(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build $(BB)/.binutils.installed
+$(BB)/.gcc.configured: $(BB)/gcc/src $(BB)/gcc/build bootstrap-binutils
 	@echo "Configuring bootstrap gcc..."
 	cd $(BB)/gcc/build && \
 		CFLAGS="$(CFLAGS)" \
@@ -210,7 +211,7 @@ $(BB)/.gcc.installed: $(BB)/.gcc.compiled
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(abspath $(BO))/toolchain/ && \
+		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
 
