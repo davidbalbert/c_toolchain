@@ -68,12 +68,15 @@ $(BO)/toolchain/sysroot: $(O)/sysroot $(BO)/toolchain
 		ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@; \
 	fi
 
+$(B)/linux-headers:
+	mkdir -p $@
+
 $(O)/toolchain/sysroot: $(O)/sysroot
 	ln -sfn ../sysroot $@
 
 .DEFAULT_GOAL := toolchain
 
-.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc
+.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc linux-headers
 
 toolchain: $(O)/.toolchain.done
 
@@ -106,7 +109,7 @@ $(BB)/binutils/src: $(BB)/.binutils.linked
 $(BB)/binutils/build:
 	mkdir -p $@
 
-$(BB)/.binutils.linked: | $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(BB)/binutils
+$(BB)/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | $(BB)/binutils
 	ln -sfn $< $(BB)/binutils/src
 	touch $@
 
@@ -123,13 +126,13 @@ $(BB)/.binutils.compiled: | $(BB)/.binutils.configured
 	touch $@
 
 $(BB)/.binutils.installed: | $(BB)/.binutils.compiled
-	cd $(BB)/binutils/build && \
-		TMPDIR=$$(mktemp -d) && \
-		$(MAKE) DESTDIR="$$TMPDIR" install && \
-		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
-		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
-		rm -rf "$$TMPDIR"
+	cd $(BB)/binutils/build
+	TMPDIR=$$(mktemp -d)
+	$(MAKE) DESTDIR="$$TMPDIR" install
+	find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \;
+	$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)"
+	cp -a "$$TMPDIR"/* $(BO)/toolchain/
+	rm -rf "$$TMPDIR"
 	touch $@
 
 bootstrap-gcc: | $(BB)/.gcc.installed
@@ -169,7 +172,9 @@ $(BB)/gcc/src: $(BB)/.gcc.linked
 $(BB)/gcc/build:
 	mkdir -p $@
 
-$(BB)/.gcc.linked: | $(SRC_DIR)/gcc-$(GCC_VERSION) $(BB)/gcc
+$(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
+	@echo "foo $(BB)/.gcc.linked"
+	@echo "bar $<"
 	ln -sfn $< $(BB)/gcc/src
 	touch $@
 
@@ -182,24 +187,20 @@ $(BB)/.gcc.configured: | bootstrap-binutils $(BB)/gcc/src $(BB)/gcc/build $(BO)/
 	touch $@
 
 $(BB)/.gcc.compiled: | $(BB)/.gcc.configured
-	cd $(BB)/gcc/build && \
-		$(MAKE) configure-gcc && \
-		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
-		$(MAKE)
+	cd $(BB)/gcc/build
+	$(MAKE) configure-gcc
+	sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h
+	$(MAKE)
 	touch $@
 
 $(BB)/.gcc.installed: | $(BB)/.gcc.compiled
-	cd $(BB)/gcc/build && \
-		TMPDIR=$$(mktemp -d) && \
-		$(MAKE) DESTDIR="$$TMPDIR" install && \
-		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
-		rm -rf "$$TMPDIR"
+	cd $(BB)/gcc/build
+	TMPDIR=$$(mktemp -d)
+	$(MAKE) DESTDIR="$$TMPDIR" install
+	find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \;
+	cp -a "$$TMPDIR"/* $(BO)/toolchain/
+	rm -rf "$$TMPDIR"
 	touch $@
-
-$(BB)/.linux-headers.installed: | $(BB)
-	@sleep 1  # Simulate build time
-	@touch $@
 
 $(BB)/.glibc.installed: $(BB)/.gcc.installed $(BB)/.linux-headers.installed | $(BB)
 	@sleep 2  # Simulate build time
@@ -213,21 +214,40 @@ $(B)/.binutils.installed: $(BO)/.bootstrap.done | $(B)
 	@sleep 1  # Simulate build time
 	@touch $@
 
-$(B)/.gcc.installed: $(B)/.binutils.installed $(BO)/.bootstrap.done | $(B)
-	@sleep 2  # Simulate build time
-	@touch $@
-
 $(O)/.glibc.installed: $(B)/.gcc.installed | $(O)
 	@sleep 2  # Simulate build time
 	@touch $@
 
-$(O)/.sysroot.done: $(O)/.glibc.installed $(B)/.linux-headers.installed | $(O)
+$(O)/.sysroot.done: $(O)/.glibc.installed $(O)/.linux-headers.installed | $(O)
 	@sleep 1  # Simulate sysroot assembly
 	@touch $@
 
-$(B)/.linux-headers.installed: | $(B)
-	@sleep 1  # Simulate build time
-	@touch $@
+linux-headers: $(B)/.linux-headers.installed
+
+$(B)/linux-headers/src: $(B)/.linux-headers.linked
+$(B)/linux-headers/build:
+	mkdir -p $@
+
+$(B)/.linux-headers.linked: $(SRC_DIR)/linux-$(LINUX_VERSION) | $(B)/linux-headers
+	ln -sfn $< $(B)/linux-headers/src
+	touch $@
+
+$(B)/.linux-headers.installed: $(B)/.linux-headers.linked | $(B)/linux-headers/build $(SYSROOT)
+	$(eval TARGET_ARCH := $(word 1,$(subst -, ,$(TARGET_TRIPLE))))
+	$(eval KERNEL_ARCH := $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH)))))
+
+	$(eval TMPDIR := $(shell mktemp -d))
+
+	cd $(B)/linux-headers/build
+	$(MAKE) -f $(B)/linux-headers/src/Makefile \
+		ARCH="$(KERNEL_ARCH)" \
+		INSTALL_HDR_PATH="$(TMPDIR)/usr" \
+		O=$(B)/linux-headers/build \
+		headers_install
+	find "$(TMPDIR)" -exec touch -h -d "@$(shell cat $(SRC_DIR)/linux-$(LINUX_VERSION)/.timestamp 2>/dev/null || echo 1)" {} \;
+	cp -a "$(TMPDIR)"/* $(SYSROOT)/
+	rm -rf "$(TMPDIR)"
+	touch $@
 
 download: $(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)/glibc-$(GLIBC_VERSION) $(SRC_DIR)/linux-$(LINUX_VERSION)
 
