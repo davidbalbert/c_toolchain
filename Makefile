@@ -126,13 +126,13 @@ $(BB)/.binutils.compiled: | $(BB)/.binutils.configured
 	touch $@
 
 $(BB)/.binutils.installed: | $(BB)/.binutils.compiled
-	cd $(BB)/binutils/build
-	TMPDIR=$$(mktemp -d)
-	$(MAKE) DESTDIR="$$TMPDIR" install
-	find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \;
-	$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)"
-	cp -a "$$TMPDIR"/* $(BO)/toolchain/
-	rm -rf "$$TMPDIR"
+	cd $(BB)/binutils/build && \
+		TMPDIR=$$(mktemp -d) && \
+		$(MAKE) DESTDIR="$$TMPDIR" install && \
+		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
+		$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
+		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
+		rm -rf "$$TMPDIR"
 	touch $@
 
 bootstrap-gcc: | $(BB)/.gcc.installed
@@ -187,19 +187,19 @@ $(BB)/.gcc.configured: | bootstrap-binutils $(BB)/gcc/src $(BB)/gcc/build $(BO)/
 	touch $@
 
 $(BB)/.gcc.compiled: | $(BB)/.gcc.configured
-	cd $(BB)/gcc/build
-	$(MAKE) configure-gcc
-	sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h
-	$(MAKE)
+	cd $(BB)/gcc/build && \
+		$(MAKE) configure-gcc && \
+		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
+		$(MAKE)
 	touch $@
 
 $(BB)/.gcc.installed: | $(BB)/.gcc.compiled
-	cd $(BB)/gcc/build
-	TMPDIR=$$(mktemp -d)
-	$(MAKE) DESTDIR="$$TMPDIR" install
-	find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \;
-	cp -a "$$TMPDIR"/* $(BO)/toolchain/
-	rm -rf "$$TMPDIR"
+	cd $(BB)/gcc/build && \
+		TMPDIR=$$(mktemp -d) && \
+		$(MAKE) DESTDIR="$$TMPDIR" install && \
+		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
+		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
+		rm -rf "$$TMPDIR"
 	touch $@
 
 $(BB)/.glibc.installed: $(BB)/.gcc.installed $(BB)/.linux-headers.installed | $(BB)
