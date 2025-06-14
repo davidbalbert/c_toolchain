@@ -2,7 +2,6 @@ CONFIG ?= config.mk
 
 PROJECT_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-# Reproducable build settings
 export LC_ALL := C.UTF-8
 
 ifeq ($(filter -j%,$(MAKEFLAGS)),)
@@ -38,7 +37,6 @@ B := $(BUILD_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 BO := $(OUT_DIR)/bootstrap/$(TOOLCHAIN_NAME)
 O := $(OUT_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
 
-# Global path setup based on script logic
 NATIVE_PREFIX := $(OUT_DIR)/$(BUILD)/$(TOOLCHAIN_NAME)/toolchain
 BOOTSTRAP_PREFIX := $(BO)/toolchain
 TARGET_PREFIX := $(O)/toolchain
@@ -51,7 +49,6 @@ else
   export PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
 endif
 
-# Include package-specific makefiles
 include $(PROJECT_ROOT)/mk/*.mk
 
 $(DL_DIR) $(SRC_DIR):
