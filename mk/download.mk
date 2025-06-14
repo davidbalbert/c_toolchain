@@ -25,8 +25,8 @@ $(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)
 	@tar -xf "$(TARBALL)" -C "$(SRC_DIR)"
 	@timestamp=$$(tar -tvf "$(TARBALL)" | awk '{print $$4" "$$5}' | sort -r | head -1 | xargs -I {} date -d "{}" +%s 2>/dev/null || echo 1); \
 	echo "$$timestamp" > "$@/.timestamp"
-	@if [ -d "$(MKTOOLCHAIN_ROOT)patches/$(notdir $@)" ]; then \
-		for patch in $(MKTOOLCHAIN_ROOT)patches/$(notdir $@)/*; do \
+	@if [ -d "$(PROJECT_ROOT)/patches/$(notdir $@)" ]; then \
+		for patch in $(PROJECT_ROOT)/patches/$(notdir $@)/*; do \
 			[ -f "$$patch" ] && echo "Applying: $$(basename $$patch)" && (cd "$@" && patch -p1 < "$$patch"); \
 		done; \
 	fi

@@ -1,6 +1,6 @@
 CONFIG ?= config.mk
 
-MKTOOLCHAIN_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+PROJECT_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 # Reproducable build settings
 export LC_ALL := C.UTF-8
@@ -52,7 +52,7 @@ else
 endif
 
 # Include package-specific makefiles
-include mk/*.mk
+include $(PROJECT_ROOT)/mk/*.mk
 
 $(DL_DIR) $(SRC_DIR):
 	mkdir -p $@

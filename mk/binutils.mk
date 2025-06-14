@@ -38,7 +38,7 @@ $(BB)/.binutils.installed: | $(BB)/.binutils.compiled
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		$(MKTOOLCHAIN_ROOT)script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
+		$(PROJECT_ROOT)/script/replace-binutils-hardlinks.sh "$$TMPDIR" "$(BUILD_TRIPLE)" && \
 		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
