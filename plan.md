@@ -424,12 +424,12 @@ endif
    - Test bootstrap libstdc++ build
 
 ### Phase 3: Final Build System (Native Only)
-9. **Port final binutils and gcc**
+9. ✅ **Port final binutils and gcc**
    - Convert final versions of build scripts
    - Create `build/$(HOST)/$(TARGET)/.gcc.done` targets
    - Test final toolchain build
 
-10. **Port final glibc (clean rebuild)**
+10. ✅ **Port final glibc (clean rebuild)**
     - Implement clean glibc rebuild logic
     - Test complete native toolchain end-to-end
 
