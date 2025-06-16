@@ -433,30 +433,33 @@ endif
     - Implement clean glibc rebuild logic
     - Test complete native toolchain end-to-end
 
+11. **Make toolchain relocatable**
+    - Incorporate ld-linux-shim and make-reloc.sh
+
 ### Phase 4: Cross-Compilation Support
-11. **Implement cross-compilation logic**
+12. **Implement cross-compilation logic**
     - Add BUILD_SYSTEM detection and IS_NATIVE logic
     - Create native-* target aliases
     - Test cross-compilation dependencies
 
-12. **Add sysroot assembly**
+13. **Add sysroot assembly**
     - Implement sysroot target logic
     - Test complete cross-compilation workflow
 
 ### Phase 5: Polish and Testing
-13. **Add convenience features**
+14. **Add convenience features**
     - Implement clean targets
     - Add parallel build optimizations
     - Test with `make -j`
 
-14. **Comprehensive testing**
+15. **Comprehensive testing**
     - Test native builds (aarch64→aarch64)
     - Test cross-compilation (aarch64→x86_64)
     - Compare outputs with script-based builds
     - Test with different config files
 
 ### Phase 6: Documentation and Migration
-15. **Update documentation**
+16. **Update documentation**
     - Update README.md with makefile usage
     - Document config file format
     - Add troubleshooting guide
