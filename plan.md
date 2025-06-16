@@ -414,11 +414,11 @@ endif
    - Create `build/bootstrap/.gcc.installed`, etc. targets with job server support
    - Test bootstrap gcc build
 
-7. **Port linux-headers and bootstrap-glibc**
+7. ✅ **Port linux-headers and bootstrap-glibc**
    - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
    - Create header installation and bootstrap glibc targets
 
-8. **Build and install bootstrap libstdc++**
+8. ✅ **Build and install bootstrap libstdc++**
    - Convert `script/build-libstdc++.sh` to makefile rule
    - Only needed for bootstrap phase (not final toolchain)
    - Test bootstrap libstdc++ build
