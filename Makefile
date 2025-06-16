@@ -42,13 +42,6 @@ BOOTSTRAP_PREFIX := $(BO)/toolchain
 TARGET_PREFIX := $(O)/toolchain
 SYSROOT := $(O)/sysroot
 
-ifeq ($(IS_NATIVE),)
-  # Cross build: native prefix only
-  export PATH := $(NATIVE_PREFIX)/bin:$(PATH)
-else
-  export PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
-endif
-
 include $(PROJECT_ROOT)/mk/*.mk
 
 $(DL_DIR) $(SRC_DIR):

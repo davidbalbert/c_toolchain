@@ -4,6 +4,7 @@ bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-pr
 bootstrap-binutils: SOURCE_DATE_EPOCH := $(shell cat $(BB)/binutils/src/.timestamp 2>/dev/null || echo 1)
 
 binutils: $(B)/.binutils.installed
+binutils: PATH := $(BOOTSTRAP_PREFIX)/bin:$(PATH)
 binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 binutils: SOURCE_DATE_EPOCH := $(shell cat $(B)/binutils/src/.timestamp 2>/dev/null || echo 1)
