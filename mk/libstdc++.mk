@@ -1,5 +1,5 @@
 bootstrap-libstdc++: $(BB)/.libstdc++.installed
-bootstrap-libstdc++: PATH := $(BOOTSTRAP_PREFIX)/bin:$(PATH)
+bootstrap-libstdc++: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 bootstrap-libstdc++: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-libstdc++: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-libstdc++: SOURCE_DATE_EPOCH := $(shell cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp 2>/dev/null || echo 1)

@@ -1,11 +1,11 @@
-bootstrap-gcc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(PATH)
+bootstrap-gcc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 bootstrap-gcc: | $(BB)/.gcc.installed
 bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
 
 # Use final binutils (NATIVE_PREFIX) and bootstrap gcc
-gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(PATH)
+gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 gcc: | $(B)/.gcc.done
 gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
@@ -37,7 +37,7 @@ GCC_BOOTSTRAP_CONFIG := \
 	--disable-libvtv \
 	--disable-libstdcxx \
 	--without-headers \
-	--with-gxx-include-dir=$(SYSROOT)/usr/include/c++/$(GCC_VERSION)
+	--with-gxx-include-dir=/sysroot/usr/include/c++/$(GCC_VERSION)
 
 GCC_CONFIG := \
 	$(GCC_BASE_CONFIG) \

@@ -1,10 +1,10 @@
-bootstrap-glibc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(PATH)
+bootstrap-glibc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 bootstrap-glibc: $(BB)/.glibc.installed
 bootstrap-glibc: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-glibc: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-glibc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/glibc/src/.timestamp 2>/dev/null || echo 1)
 
-glibc: PATH := $(NATIVE_PREFIX)/bin:$(PATH)
+glibc: PATH := $(NATIVE_PREFIX)/bin:$(ORIG_PATH)
 glibc: $(B)/.glibc.installed
 glibc: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 glibc: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.

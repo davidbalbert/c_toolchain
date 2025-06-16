@@ -14,6 +14,8 @@ BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
 HOST ?= $(BUILD)
 TARGET ?= $(HOST)
 
+ORIG_PATH := $(PATH)
+
 # Convert os/arch to GNU triple (e.g., linux/aarch64 -> aarch64-linux-gnu)
 os_arch_to_triple = $(word 2,$(subst /, ,$(1)))-$(word 1,$(subst /, ,$(1)))-gnu
 BUILD_TRIPLE := $(call os_arch_to_triple,$(BUILD))
@@ -50,7 +52,7 @@ $(DL_DIR) $(SRC_DIR):
 $(BB) $(B):
 	mkdir -p $@
 
-$(BB)/binutils $(BB)/gcc:
+$(BB)/binutils $(BB)/gcc $(B)/binutils $(B)/gcc:
 	mkdir -p $@
 
 $(BO)/toolchain $(O)/toolchain $(O)/sysroot:
@@ -67,7 +69,7 @@ $(BB)/linux-headers $(B)/linux-headers:
 $(BB)/glibc $(B)/glibc:
 	mkdir -p $@
 
-$(O)/toolchain/sysroot: $(O)/sysroot
+$(O)/toolchain/sysroot: $(O)/sysroot $(O)/toolchain
 	ln -sfn ../sysroot $@
 
 .DEFAULT_GOAL := toolchain

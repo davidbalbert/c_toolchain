@@ -1,4 +1,5 @@
 linux-headers: $(B)/.linux-headers.installed
+linux-headers: PATH := $(ORIG_PATH)
 
 $(B)/linux-headers/src: $(B)/.linux-headers.linked
 $(B)/linux-headers/build:
