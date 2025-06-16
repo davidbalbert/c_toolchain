@@ -28,15 +28,9 @@ BINUTILS_CONFIG = \
 	--enable-new-dtags \
 	--disable-werror
 
-$(BB)/binutils/src $(B)/binutils/src: %/binutils/src: %/.binutils.linked
-$(BB)/binutils/build $(B)/binutils/build:
-	mkdir -p $@
-
-$(BB)/.binutils.linked $(B)/.binutils.linked: %/.binutils.linked: $(SRC_DIR)/binutils-$(BINUTILS_VERSION) | %/binutils
-	ln -sfn $< $*/binutils/src
-	touch $@
-
-$(BB)/.binutils.configured $(B)/.binutils.configured: %/.binutils.configured: | %/binutils/src %/binutils/build $(SYSROOT)
+$(BB)/.binutils.configured $(B)/.binutils.configured: %/.binutils.configured: $(SRC_DIR)/binutils-$(BINUTILS_VERSION)
+	mkdir -p $*/binutils/build
+	ln -sfn $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $*/binutils/src
 	cd $*/binutils/build && \
 		$(DYNAMIC_LINKER_SETUP) && \
 		CFLAGS="$(CFLAGS)" \
