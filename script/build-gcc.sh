@@ -106,11 +106,11 @@ mkdir -p "$GCC_BUILD_DIR"
 # Create symlink to source directory
 ln -sfn "$SRC_DIR/gcc-$GCC_VERSION" "$BUILD_DIR/gcc/src"
 mkdir -p "$PREFIX"
+mkdir -p "$SYSROOT"
 
-if [ "$BOOTSTRAP" != "true" ]; then
-    # In non-bootstrap builds, sysroot and toolchain are siblings. When GCC is built
-    # with a sysroot inside its prefix, it uses relative paths, which means the toolchain
-    # can be moved around.
+if [ "$BOOTSTRAP" == "true" ]; then
+    ln -sfn "../../../$HOST/$HOST-gcc-$GCC_VERSION/sysroot" "$PREFIX/sysroot"
+else
     ln -sfn "../sysroot" "$PREFIX/sysroot"
 fi
 
