@@ -417,42 +417,46 @@ endif
 7. **Port linux-headers and bootstrap-glibc**
    - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
    - Create header installation and bootstrap glibc targets
-   - Test complete bootstrap toolchain
+
+8. **Build and install bootstrap libstdc++**
+   - Convert `script/build-libstdc++.sh` to makefile rule
+   - Only needed for bootstrap phase (not final toolchain)
+   - Test bootstrap libstdc++ build
 
 ### Phase 3: Final Build System (Native Only)
-8. **Port final binutils and gcc**
+9. **Port final binutils and gcc**
    - Convert final versions of build scripts
    - Create `build/$(HOST)/$(TARGET)/.gcc.done` targets
    - Test final toolchain build
 
-9. **Port final glibc (clean rebuild)**
-   - Implement clean glibc rebuild logic
-   - Test complete native toolchain end-to-end
+10. **Port final glibc (clean rebuild)**
+    - Implement clean glibc rebuild logic
+    - Test complete native toolchain end-to-end
 
 ### Phase 4: Cross-Compilation Support
-10. **Implement cross-compilation logic**
-   - Add BUILD_SYSTEM detection and IS_NATIVE logic
-   - Create native-* target aliases
-   - Test cross-compilation dependencies
+11. **Implement cross-compilation logic**
+    - Add BUILD_SYSTEM detection and IS_NATIVE logic
+    - Create native-* target aliases
+    - Test cross-compilation dependencies
 
-11. **Add sysroot assembly**
+12. **Add sysroot assembly**
     - Implement sysroot target logic
     - Test complete cross-compilation workflow
 
 ### Phase 5: Polish and Testing
-12. **Add convenience features**
+13. **Add convenience features**
     - Implement clean targets
     - Add parallel build optimizations
     - Test with `make -j`
 
-13. **Comprehensive testing**
+14. **Comprehensive testing**
     - Test native builds (aarch64→aarch64)
     - Test cross-compilation (aarch64→x86_64)
     - Compare outputs with script-based builds
     - Test with different config files
 
 ### Phase 6: Documentation and Migration
-14. **Update documentation**
+15. **Update documentation**
     - Update README.md with makefile usage
     - Document config file format
     - Add troubleshooting guide
