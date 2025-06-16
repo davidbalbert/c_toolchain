@@ -68,7 +68,10 @@ $(BO)/toolchain/sysroot: $(O)/sysroot $(BO)/toolchain
 		ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@; \
 	fi
 
-$(B)/linux-headers:
+$(BB)/linux-headers $(B)/linux-headers:
+	mkdir -p $@
+
+$(BB)/glibc $(B)/glibc:
 	mkdir -p $@
 
 $(O)/toolchain/sysroot: $(O)/sysroot
@@ -76,7 +79,7 @@ $(O)/toolchain/sysroot: $(O)/sysroot
 
 .DEFAULT_GOAL := toolchain
 
-.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc linux-headers
+.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-linux-headers linux-headers binutils gcc glibc
 
 toolchain: $(O)/.toolchain.done
 
@@ -86,11 +89,11 @@ $(BO)/.bootstrap.done: $(BO)/.libstdc++.installed | $(BO)
 	@echo "Bootstrap toolchain complete"
 	@touch $@
 
-$(O)/.toolchain.done: $(O)/.glibc.installed $(O)/.sysroot.done | $(O)
+$(O)/.toolchain.done: $(B)/.gcc.done $(O)/.sysroot.done | $(O)
 	@echo "Target toolchain complete"
 	@touch $@
 
-$(O)/.sysroot.done: $(O)/.glibc.installed $(O)/.linux-headers.installed | $(O)
+$(O)/.sysroot.done: $(B)/.glibc.installed $(B)/.linux-headers.installed | $(O)
 	@sleep 1  # Simulate sysroot assembly
 	@touch $@
 

@@ -3,6 +3,11 @@ bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-ma
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
 
+gcc: | $(B)/.gcc.done
+gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
+gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
+gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
+
 GCC_BASE_CONFIG := \
 	--host=$(HOST_TRIPLE) \
 	--target=$(TARGET_TRIPLE) \
@@ -30,6 +35,13 @@ GCC_BOOTSTRAP_CONFIG := \
 	--disable-libstdcxx \
 	--without-headers \
 	--with-gxx-include-dir=$(SYSROOT)/usr/include/c++/$(GCC_VERSION)
+
+GCC_CONFIG := \
+	$(GCC_BASE_CONFIG) \
+	--enable-host-pie \
+	--disable-fixincludes
+
+# Bootstrap GCC
 
 $(BB)/gcc/src: $(BB)/.gcc.linked
 $(BB)/gcc/build:
@@ -61,4 +73,50 @@ $(BB)/.gcc.installed: | $(BB)/.gcc.compiled
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
 		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
 		rm -rf "$$TMPDIR"
+	touch $@
+
+
+# Final GCC
+
+$(B)/gcc/src: $(B)/.gcc.linked
+$(B)/gcc/build:
+	mkdir -p $@
+
+$(B)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(B)/gcc
+	ln -sfn $< $(B)/gcc/src
+	touch $@
+
+$(B)/.gcc.configured: | binutils bootstrap-glibc $(B)/gcc/src $(B)/gcc/build
+	cd $(B)/gcc/build && \
+		DYNAMIC_LINKER=$$(find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1) && \
+		if [ -z "$$DYNAMIC_LINKER" ]; then echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib"; exit 1; fi && \
+		if [ ! -x "$(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc" ]; then \
+			EXTRA_CONFIG="--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin"; \
+		else \
+			EXTRA_CONFIG=""; \
+		fi && \
+		CFLAGS="$(CFLAGS)" \
+		CXXFLAGS="$(CXXFLAGS)" \
+		LDFLAGS="-L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$$DYNAMIC_LINKER" \
+		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
+		../src/configure $(GCC_CONFIG) $$EXTRA_CONFIG
+	touch $@
+
+$(B)/.gcc.compiled: | $(B)/.gcc.configured
+	cd $(B)/gcc/build && \
+		$(MAKE) configure-gcc && \
+		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
+		$(MAKE)
+	touch $@
+
+$(B)/.gcc.installed: | $(B)/.gcc.compiled
+	cd $(B)/gcc/build && \
+		TMPDIR=$$(mktemp -d) && \
+		$(MAKE) DESTDIR="$$TMPDIR" install && \
+		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
+		cp -a "$$TMPDIR"/* $(TARGET_PREFIX)/ && \
+		rm -rf "$$TMPDIR"
+	touch $@
+
+$(B)/.gcc.done: | $(B)/.gcc.installed $(TARGET_PREFIX)/sysroot
 	touch $@
