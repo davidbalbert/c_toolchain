@@ -7,7 +7,6 @@ bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-ma
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: LDFLAGS :=
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
-bootstrap-gcc: DYNAMIC_LINKER_SETUP := true
 bootstrap-gcc: EXTRA_CONFIG := true
 bootstrap-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_BOOTSTRAP_CONFIG)
 
@@ -18,9 +17,9 @@ gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
-gcc: DYNAMIC_LINKER_SETUP := DYNAMIC_LINKER=$$(find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1) && if [ -z "$$DYNAMIC_LINKER" ]; then echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib"; exit 1; fi
+gcc: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
 gcc: EXTRA_CONFIG := if [ ! -x "$(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc" ]; then EXTRA_CONFIG_VAL="--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin"; else EXTRA_CONFIG_VAL=""; fi
-gcc: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$$DYNAMIC_LINKER
+gcc: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
 gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG)
 
 # Base config shared by both bootstrap and final
@@ -66,7 +65,6 @@ $(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured: $(SRC_DIR)/gcc-$(
 	mkdir -p $*/gcc/build
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
 	cd $*/gcc/build && \
-		$(DYNAMIC_LINKER_SETUP) && \
 		$(EXTRA_CONFIG) && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \

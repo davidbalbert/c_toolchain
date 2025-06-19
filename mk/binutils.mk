@@ -7,16 +7,15 @@ bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-pref
 bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-binutils: LDFLAGS :=
 bootstrap-binutils: SOURCE_DATE_EPOCH := $(shell cat $(BB)/binutils/src/.timestamp 2>/dev/null || echo 1)
-bootstrap-binutils: DYNAMIC_LINKER_SETUP := true
 
 binutils: $(B)/.binutils.installed
 binutils: PREFIX := $(NATIVE_PREFIX)
 binutils: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+binutils: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
 binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-binutils: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$$DYNAMIC_LINKER
+binutils: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
 binutils: SOURCE_DATE_EPOCH := $(shell cat $(B)/binutils/src/.timestamp 2>/dev/null || echo 1)
-binutils: DYNAMIC_LINKER_SETUP := DYNAMIC_LINKER=$$(find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1) && if [ -z "$$DYNAMIC_LINKER" ]; then echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib"; exit 1; fi
 
 BINUTILS_CONFIG = \
 	--host=$(HOST_TRIPLE) \
@@ -32,7 +31,6 @@ $(BB)/.binutils.configured $(B)/.binutils.configured: %/.binutils.configured: $(
 	mkdir -p $*/binutils/build
 	ln -sfn $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $*/binutils/src
 	cd $*/binutils/build && \
-		$(DYNAMIC_LINKER_SETUP) && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
 		LDFLAGS="$(LDFLAGS)" \
