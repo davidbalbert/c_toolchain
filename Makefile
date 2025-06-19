@@ -74,7 +74,7 @@ $(O)/toolchain/sysroot: $(O)/sysroot $(O)/toolchain
 
 .DEFAULT_GOAL := toolchain
 
-.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-libstdc++ bootstrap-linux-headers linux-headers binutils gcc glibc
+.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-libstdc++ linux-headers binutils gcc glibc
 
 toolchain: $(O)/.toolchain.done
 
