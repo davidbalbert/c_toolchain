@@ -7,20 +7,19 @@ bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-ma
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: LDFLAGS :=
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
-bootstrap-gcc: EXTRA_CONFIG := true
 bootstrap-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_BOOTSTRAP_CONFIG)
 
 gcc: $(B)/.gcc.installed
 gcc: PREFIX := $(NATIVE_PREFIX)
 # Use native binutils and bootstrap gcc
 gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+gcc: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
 gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
-gcc: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
-gcc: EXTRA_CONFIG := if [ ! -x "$(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc" ]; then EXTRA_CONFIG_VAL="--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin"; else EXTRA_CONFIG_VAL=""; fi
 gcc: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG)
+gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
+gcc: BUILD_TIME_TOOLS := $(if $(wildcard $(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc),,--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin)
+gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
 
 # Base config shared by both bootstrap and final
 GCC_BASE_CONFIG = \
@@ -65,12 +64,11 @@ $(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured: $(SRC_DIR)/gcc-$(
 	mkdir -p $*/gcc/build
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
 	cd $*/gcc/build && \
-		$(EXTRA_CONFIG) && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
 		LDFLAGS="$(LDFLAGS)" \
 		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
-		../src/configure $(GCC_CONFIG) $$EXTRA_CONFIG_VAL
+		../src/configure $(GCC_CONFIG)
 	touch $@
 
 $(BB)/.gcc.compiled $(B)/.gcc.compiled: %/.gcc.compiled: | %/.gcc.configured
