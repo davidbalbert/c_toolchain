@@ -1,17 +1,30 @@
+bootstrap-gcc: $(BB)/.gcc.installed
+bootstrap-gcc: HOST_TRIPLE := $(BUILD_TRIPLE)
+bootstrap-gcc: TARGET_TRIPLE := $(BUILD_TRIPLE)
+bootstrap-gcc: PREFIX := $(BOOTSTRAP_PREFIX)
 bootstrap-gcc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-bootstrap-gcc: | $(BB)/.gcc.installed
 bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
 bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
+bootstrap-gcc: LDFLAGS :=
 bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
+bootstrap-gcc: DYNAMIC_LINKER_SETUP := true
+bootstrap-gcc: EXTRA_CONFIG := true
+bootstrap-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_BOOTSTRAP_CONFIG)
 
-# Use final binutils (NATIVE_PREFIX) and bootstrap gcc
+gcc: $(B)/.gcc.installed
+gcc: PREFIX := $(NATIVE_PREFIX)
+# Use native binutils and bootstrap gcc
 gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-gcc: | $(B)/.gcc.done
 gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
 gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
+gcc: DYNAMIC_LINKER_SETUP := DYNAMIC_LINKER=$$(find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1) && if [ -z "$$DYNAMIC_LINKER" ]; then echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib"; exit 1; fi
+gcc: EXTRA_CONFIG := if [ ! -x "$(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc" ]; then EXTRA_CONFIG_VAL="--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin"; else EXTRA_CONFIG_VAL=""; fi
+gcc: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$$DYNAMIC_LINKER
+gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG)
 
-GCC_BASE_CONFIG := \
+# Base config shared by both bootstrap and final
+GCC_BASE_CONFIG = \
 	--host=$(HOST_TRIPLE) \
 	--target=$(TARGET_TRIPLE) \
 	--prefix= \
@@ -23,8 +36,8 @@ GCC_BASE_CONFIG := \
 	--disable-bootstrap \
 	--enable-languages=c,c++
 
-GCC_BOOTSTRAP_CONFIG := \
-	$(GCC_BASE_CONFIG) \
+# Additional config for bootstrap build
+GCC_BOOTSTRAP_CONFIG = \
 	--with-glibc-version=$(GLIBC_VERSION) \
 	--with-newlib \
 	--disable-nls \
@@ -39,87 +52,42 @@ GCC_BOOTSTRAP_CONFIG := \
 	--without-headers \
 	--with-gxx-include-dir=/sysroot/usr/include/c++/$(GCC_VERSION)
 
-GCC_CONFIG := \
-	$(GCC_BASE_CONFIG) \
+# Additional config for final build
+GCC_FINAL_CONFIG = \
 	--enable-host-pie \
 	--disable-fixincludes
 
-# Bootstrap GCC
+# Config variables are now set as target-specific assignments above
 
-$(BB)/gcc/src: $(BB)/.gcc.linked
-$(BB)/gcc/build:
-	mkdir -p $@
-
-$(BB)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/gcc
-	ln -sfn $< $(BB)/gcc/src
-	touch $@
-
-$(BB)/.gcc.configured: | bootstrap-binutils $(BB)/gcc/src $(BB)/gcc/build $(BO)/toolchain/sysroot
-	cd $(BB)/gcc/build && \
+# Static pattern rules for both bootstrap and final builds
+$(BB)/.gcc.configured: | bootstrap-binutils $(BO)/toolchain/sysroot
+$(B)/.gcc.configured: | binutils bootstrap-glibc
+$(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION)
+	mkdir -p $*/gcc/build
+	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
+	cd $*/gcc/build && \
+		$(DYNAMIC_LINKER_SETUP) && \
+		$(EXTRA_CONFIG) && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
+		LDFLAGS="$(LDFLAGS)" \
 		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
-		../src/configure $(GCC_BOOTSTRAP_CONFIG)
+		../src/configure $(GCC_CONFIG) $$EXTRA_CONFIG_VAL
 	touch $@
 
-$(BB)/.gcc.compiled: | $(BB)/.gcc.configured
-	cd $(BB)/gcc/build && \
+$(BB)/.gcc.compiled $(B)/.gcc.compiled: %/.gcc.compiled: | %/.gcc.configured
+	cd $*/gcc/build && \
 		$(MAKE) configure-gcc && \
 		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
 		$(MAKE)
 	touch $@
 
-$(BB)/.gcc.installed: | $(BB)/.gcc.compiled
-	cd $(BB)/gcc/build && \
+$(BB)/.gcc.installed $(B)/.gcc.installed: %/.gcc.installed: | %/.gcc.compiled
+	cd $*/gcc/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(BO)/toolchain/ && \
+		mkdir -p $(PREFIX) && \
+		cp -a "$$TMPDIR"/* $(PREFIX)/ && \
 		rm -rf "$$TMPDIR"
-	touch $@
-
-
-# Final GCC
-
-$(B)/gcc/src: $(B)/.gcc.linked
-$(B)/gcc/build:
-	mkdir -p $@
-
-$(B)/.gcc.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(B)/gcc
-	ln -sfn $< $(B)/gcc/src
-	touch $@
-
-$(B)/.gcc.configured: | binutils bootstrap-glibc $(B)/gcc/src $(B)/gcc/build
-	cd $(B)/gcc/build && \
-		DYNAMIC_LINKER=$$(find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1) && \
-		if [ -z "$$DYNAMIC_LINKER" ]; then echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib"; exit 1; fi && \
-		if [ ! -x "$(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc" ]; then \
-			EXTRA_CONFIG="--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin"; \
-		else \
-			EXTRA_CONFIG=""; \
-		fi && \
-		CFLAGS="$(CFLAGS)" \
-		CXXFLAGS="$(CXXFLAGS)" \
-		LDFLAGS="-L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$$DYNAMIC_LINKER" \
-		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
-		../src/configure $(GCC_CONFIG) $$EXTRA_CONFIG
-	touch $@
-
-$(B)/.gcc.compiled: | $(B)/.gcc.configured
-	cd $(B)/gcc/build && \
-		$(MAKE) configure-gcc && \
-		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
-		$(MAKE)
-	touch $@
-
-$(B)/.gcc.installed: | $(B)/.gcc.compiled
-	cd $(B)/gcc/build && \
-		TMPDIR=$$(mktemp -d) && \
-		$(MAKE) DESTDIR="$$TMPDIR" install && \
-		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(TARGET_PREFIX)/ && \
-		rm -rf "$$TMPDIR"
-	touch $@
-
-$(B)/.gcc.done: | $(B)/.gcc.installed $(TARGET_PREFIX)/sysroot
 	touch $@
