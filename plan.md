@@ -124,8 +124,8 @@ BINUTILS_SHA256 := 0cdd76777a0dfd3dd3a63f215f030208ddb91c2361d2bcc02acec0f1c16b6
 GLIBC_SHA256 := c7be6e25eeaf4b956f5d4d56a04d23e4db453fc07760f872903bb61a49519b80
 LINUX_SHA256 := 724f68742eeccf26e090f03dd8dfbf9c159d65f91d59b049e41f996fa41d9bc1
 
-# Full toolchain name constructed as: $(TARGET_ARCH)-$(TARGET_OS)-$(LIBC_NAME)-$(TOOLCHAIN_NAME)
-# where LIBC_NAME maps: glibc → gnu, musl → musl
+# Full toolchain name constructed as: $(TARGET_ARCH)-$(TARGET_OS)-$(ENV)-$(TOOLCHAIN_SUFFIX)
+# where ENV maps: glibc → gnu, musl → musl
 # Examples: aarch64-linux-gnu-gcc-15.1.0, x86_64-linux-gnu-gcc-15.1.0
 ```
 
@@ -227,42 +227,60 @@ CONFIG ?= config.mk
 HOST ?= $(BUILD)
 TARGET ?= $(HOST)
 
-# User-facing component targets (affected by HOST/TARGET)
+# Map LIBC to environment name (LLVM convention)
+ifeq ($(LIBC),glibc)
+  ENV := gnu
+else
+  ENV := $(LIBC)
+endif
+
+# Construct toolchain names for different phases
+BUILD_TOOLCHAIN_NAME := $(BUILD)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
+HOST_TOOLCHAIN_NAME := $(HOST)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)  
+TARGET_TOOLCHAIN_NAME := $(TARGET)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
+
+# User-facing phony targets (convenience aliases only)
 gcc: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed
 binutils: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.binutils.installed
 glibc: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.glibc.installed
 
-# Bootstrap component targets (unaffected by HOST/TARGET)
 bootstrap-gcc: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
 bootstrap-binutils: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.binutils.installed
 bootstrap-glibc: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.glibc.installed
 bootstrap-libstdc++: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
 
 # Conditional file dependencies based on HOST/TARGET relationship
-ifeq ($(HOST),$(BUILD))
-  # Native case: final depends directly on bootstrap
-  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: bootstrap-libstdc++
+# Case 1: HOST == BUILD == TARGET (native compiler)
+ifeq ($(HOST)_$(TARGET),$(BUILD)_$(BUILD))
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
+# Case 2: HOST == BUILD ≠ TARGET (cross-compiler for current system)
+else ifeq ($(HOST),$(BUILD))
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
+  build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
+# Case 3: HOST ≠ BUILD (cross-compilation)
 else
-  # Cross-compilation case: final depends on cross-compiler
-  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/cross/$(BUILD)-to-$(HOST)/.gcc.installed
-  # Cross-compiler depends on native toolchain
-  build/cross/$(BUILD)-to-$(HOST)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
-  # Native toolchain depends on bootstrap
-  build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: bootstrap-libstdc++
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed
+  build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
+  build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
 endif
+
+# Target-specific variables set on actual .installed file targets
+build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = bootstrap
+build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = native
+build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = cross
+build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = final
 ```
 
 ### Key Insights
-1. **Simplified user interface** - `gcc`, `binutils`, `glibc` targets affected by HOST/TARGET variables
-2. **Bootstrap targets unchanged** - always build for build system regardless of HOST/TARGET
-3. **Conditional file dependencies** - same target names resolve to different dependency chains
-4. **Cross-compiler conditional** - only built when build ≠ HOST
-5. **Automatic toolchain naming** - TARGET architecture/OS/libc + config suffix
-6. **Consistent file structure** - bootstrap and final toolchains have same arch/toolchain-name/ pattern
+1. **Phony targets as aliases** - User-facing targets are convenience aliases pointing to .installed files
+2. **Target-specific variables on file targets** - Configuration set on actual .installed targets, not phony targets
+3. **Flattened conditional logic** - Three clear cases using else ifeq instead of nested conditions
+4. **Consistent file structure** - All toolchains use linux/HOST/toolchain-name/ layout (no build/cross/)
+5. **Cross-compiler dependencies** - HOST==BUILD but TARGET≠BUILD goes through native compiler
+6. **Automatic toolchain naming** - TARGET architecture/OS/libc + config suffix
 7. **Clean rebuilds at each phase** - ensures proper linking and dependencies
 8. **Parallel builds possible** within each phase but not across phases
 9. **Source extraction** happens automatically via pattern rule
-10. **Sysroot assembly** happens after final glibc is built
-11. **Downloads can happen in parallel** and early
+10. **Downloads can happen in parallel** and early
 
 ## Implementation Plan
