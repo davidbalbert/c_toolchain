@@ -12,7 +12,8 @@ $(BOOTSTRAP_BUILD_DIR)/.binutils.installed $(BUILD_BUILD_DIR)/.binutils.installe
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PREFIX := $(BOOTSTRAP_PREFIX)
-$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: SYSROOT := $(BUILD_SYSROOT) # there's no bootstrap sysroot
+# there's no bootstrap sysroot
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: SYSROOT := $(BUILD_SYSROOT)
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PATH := $(ORIG_PATH)
 
 $(BUILD_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
