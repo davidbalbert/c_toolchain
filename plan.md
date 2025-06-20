@@ -346,19 +346,21 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 
 ## Implementation Plan
 
+*When you've finished a step, please check it off*
+
 ### Step 1: Update Path Computation and Toolchain Naming
-- [ ] Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
-- [ ] Use `$(TARGET_TRIPLE)-$(TOOLCHAIN_NAME)` directly for toolchain directory names
-- [ ] Update `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` to use new computed paths
-- [ ] Test that new paths generate correctly for different BUILD/HOST/TARGET combinations
+- [x] Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
+- [x] Use `$(TARGET_TRIPLE)-$(TOOLCHAIN_NAME)` directly for toolchain directory names
+- [x] Update `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` to use new computed paths
+- [x] Test that new paths generate correctly for different BUILD/HOST/TARGET combinations
 
 ### Step 2: Add BUILD/HOST/TARGET Conditional Logic
-- [ ] Add logic to determine which build phases are needed:
+- [x] Add logic to determine which build phases are needed:
   - Native build: HOST==BUILD==TARGET (1 phase)
   - Cross compile: HOST==BUILD≠TARGET (2 phases: bootstrap + final)
   - Cross compile for different host: HOST≠BUILD (3-4 phases)
-- [ ] Create variables to track which toolchains need to be built
-- [ ] Add conditional dependency chains based on build scenario
+- [x] Create variables to track which toolchains need to be built
+- [x] Add conditional dependency chains based on build scenario
 
 ### Step 3: Refactor Pattern Rules to be Generic
 - [ ] Replace hardcoded `$(BB)/.component.{configured,compiled,installed}` patterns
