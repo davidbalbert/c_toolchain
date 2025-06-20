@@ -33,38 +33,22 @@ Migrating the various scripts that build the toolchain to a Makefile
 - **No separate config files per target**
 - **Keep existing reproducibility techniques**
 
-## Questions Still To Answer
-
-### 1. User Interface Design - PRIMARY FOCUS
-- What are the primary make targets users will run?
-- What's the overall command structure?
-- How do we model the two-phase build (bootstrap -> native) in make dependencies?
-- How do we handle the "clean" rebuilds of glibc and gcc in phase 2?
-
-### 2. Technical Details (After UI Design)
-- How do we handle checksums and downloads in make?
-- How do we integrate `make-reloc.sh` into the makefile structure?
-- What are the precise dependencies between each component?
-- Should intermediate artifacts be preserved or cleaned up?
-
 ## Proposed User Interface
 
 ### Primary Usage
 ```bash
-# The default target is toolchain
-make
+# Build specific components (HOST and TARGET default to build system)
+make gcc
+make binutils
+make glibc
 
-# Build native toolchain (HOST and TARGET default to build system)
-make toolchain
+# Build for different architectures
+make gcc HOST=aarch64 TARGET=x86_64
+make binutils HOST=x86_64 TARGET=x86_64
+make glibc HOST=aarch64 TARGET=aarch64
 
-# Build cross-compiler
-make toolchain TARGET=linux/x86_64
-
-# Build cross-compiler with explicit HOST
-make toolchain HOST=linux/aarch64 TARGET=linux/x86_64
-
-# Use default config.mk, or specify alternative
-make toolchain TARGET=linux/x86_64 CONFIG=clang-toolchain.mk
+# Use alternative config
+make gcc HOST=x86_64 TARGET=x86_64 CONFIG=musl-toolchain.mk
 ```
 
 ### Alternative Targets
@@ -72,21 +56,21 @@ make toolchain TARGET=linux/x86_64 CONFIG=clang-toolchain.mk
 # Just download and verify sources
 make download
 
-# Build only bootstrap phase (specifying HOST or TARGET other than)
-make bootstrap
-
-# Build final sysroot only (assumes bootstrap exists)
-make sysroot HOST=linux/aarch64 TARGET=linux/aarch64
+# Bootstrap component targets
+make bootstrap-gcc
+make bootstrap-binutils
+make bootstrap-glibc
+make bootstrap-libstdc++
 
 # Clean specific toolchain
-make clean-toolchain HOST=linux/aarch64 TARGET=linux/aarch64
+make clean-toolchain HOST=aarch64 TARGET=aarch64
 
 # Clean everything
 make clean
 ```
 
 ### Variables
-- `HOST` - Where the compiler runs (defaults to system)
+- `HOST` - Where the compiler runs (defaults to build system)
 - `TARGET` - What the compiler builds for (defaults to HOST)
 - `CONFIG` - Config file (default: config.mk)
 - `BUILD_ROOT` - Build directory (default: current directory)
@@ -95,28 +79,38 @@ make clean
 ```
 out/
 ├── linux/
-│   └── aarch64/
-│       └── aarch64-linux-gnu-gcc-15.1.0/
-│           ├── toolchain/     # Final toolchain
+│   ├── aarch64/
+│   │   ├── aarch64-linux-gnu-gcc-15.1.0/
+│   │   │   ├── toolchain/     # Final toolchain (HOST=aarch64, TARGET=aarch64)
+│   │   │   └── sysroot/       # Final sysroot
+│   │   └── x86_64-linux-gnu-gcc-15.1.0/
+│   │       ├── toolchain/     # Cross-compiler (HOST=aarch64, TARGET=x86_64)
+│   │       └── sysroot/       # Cross-compiler sysroot
+│   └── x86_64/
+│       └── x86_64-linux-gnu-gcc-15.1.0/
+│           ├── toolchain/     # Final toolchain (HOST=x86_64, TARGET=x86_64)
 │           └── sysroot/       # Final sysroot
 └── bootstrap/
-    └── aarch64-linux-gnu-gcc-15.1.0/
-        └── toolchain/     # Bootstrap toolchain
+    └── aarch64/
+        └── aarch64-linux-gnu-gcc-15.1.0/
+            └── toolchain/     # Bootstrap toolchain (minimal for build system)
 ```
 
 ### Key Design Principles
-1. **Simple common case**: `make toolchain` builds native toolchain for current system
-2. **Hidden complexity**: Two-phase build happens automatically via dependencies
-3. **Granular control**: Individual phase targets available when needed
-4. **Parallel safe**: All targets support `make -j`
-5. **Resumable**: Can restart from any phase if previous phases complete
+1. **Ease of use**: Multi-phase build happens automatically via dependencies
+2. **Conditional phases**: Cross-compiler built only when HOST ≠ BUILD system
+3. **Automatic naming**: Toolchain names constructed from TARGET + config suffix
+4. **Granular control**: Individual component and bootstrap targets available
+5. **Parallel safe**: All targets support `make -j`
+6. **Resumable**: Can restart from any phase if previous phases complete
 
 ## Config File Design
 
 ### config.mk Example
 ```makefile
-# Toolchain identifier
-TOOLCHAIN_NAME := aarch64-linux-gnu-gcc-15.1.0
+# Toolchain recipe identifier (architecture/OS/libc added automatically)
+TOOLCHAIN_NAME := gcc-15.1.0
+LIBC := glibc  # or musl
 
 # Package versions
 GCC_VERSION := 15.1.0
@@ -129,30 +123,65 @@ GCC_SHA256 := 51b9919ea69c980d7a381db95d4be27edf73b21254eb13d752a08003b4d013b1
 BINUTILS_SHA256 := 0cdd76777a0dfd3dd3a63f215f030208ddb91c2361d2bcc02acec0f1c16b6a2e
 GLIBC_SHA256 := c7be6e25eeaf4b956f5d4d56a04d23e4db453fc07760f872903bb61a49519b80
 LINUX_SHA256 := 724f68742eeccf26e090f03dd8dfbf9c159d65f91d59b049e41f996fa41d9bc1
+
+# Full toolchain name constructed as: $(TARGET_ARCH)-$(TARGET_OS)-$(LIBC_NAME)-$(TOOLCHAIN_NAME)
+# where LIBC_NAME maps: glibc → gnu, musl → musl
+# Examples: aarch64-linux-gnu-gcc-15.1.0, x86_64-linux-gnu-gcc-15.1.0
 ```
 
 ### Future Config Variations
 ```makefile
-# clang-toolchain.mk
-COMPILER := clang
+# musl-toolchain.mk
+TOOLCHAIN_NAME := gcc-15.1.0-musl
 LIBC := musl
 
 BINUTILS_VERSION := 2.44
 MUSL_VERSION := 1.2.4
 LINUX_VERSION := 6.6.89
+GCC_VERSION := 15.1.0
+# Results in: x86_64-linux-musl-gcc-15.1.0-musl
+
+# clang-toolchain.mk
+TOOLCHAIN_NAME := clang-18.0.0
+LIBC := glibc
+COMPILER := clang
+
+BINUTILS_VERSION := 2.44
+GLIBC_VERSION := 2.41
+LINUX_VERSION := 6.6.89
 LLVM_VERSION := 18.0.0
+# Results in: x86_64-linux-gnu-clang-18.0.0
 ```
 
 ### Config File Rules
 1. **Package versions and checksums** - Core responsibility
 2. **Build tool selection** - LIBC, COMPILER choices
-3. **No architecture info** - HOST/TARGET stay on command line
+3. **Recipe suffix only** - Architecture/OS automatically added from TARGET
 4. **No reproducibility settings** - Always set appropriately by makefile
 5. **Makefile syntax** - Simple variable assignments for easy inclusion
 
 ## Dependency Graph
 
-### Two-Phase Build Flow
+### Multi-Phase Build Flow
+
+The number of phases depends on the relationship between BUILD system, HOST, and TARGET:
+
+#### Case 1: BUILD = HOST = TARGET (Native build on build system)
+```
+Downloads & Sources → Bootstrap → Native Toolchain
+```
+
+#### Case 2: BUILD = HOST ≠ TARGET (Cross-compiler for build system)
+```
+Downloads & Sources → Bootstrap → Native Toolchain → Final Cross-Compiler
+```
+
+#### Case 3: BUILD ≠ HOST (Toolchain for different system)
+```
+Downloads & Sources → Bootstrap → Native → Cross-Compiler → Final Toolchain
+```
+
+### Detailed Phase Breakdown
 ```
 Downloads & Checksums
 ├── gcc-15.1.0.tar.gz
@@ -166,17 +195,27 @@ Source Extraction & Patching
 ├── src/glibc-2.41/
 └── src/linux-6.6.89/
 
-Phase 1: Bootstrap Toolchain
+Phase 1: Bootstrap Toolchain (BUILD→BUILD, always required)
 ├── bootstrap-binutils    (needs: binutils sources)
 ├── bootstrap-gcc         (needs: gcc sources, bootstrap-binutils)
 ├── linux-headers         (needs: linux sources)
 ├── bootstrap-glibc       (needs: glibc sources, bootstrap-gcc, linux-headers)
 └── bootstrap-libstdc++   (needs: bootstrap-gcc, bootstrap-glibc)
 
-Phase 2: Final Toolchain
+Phase 2: Build→Build Toolchain (full-featured, always required)
 ├── binutils              (needs: binutils sources, bootstrap toolchain)
 ├── gcc                   (needs: gcc sources, binutils, bootstrap toolchain)
 └── glibc                 (needs: glibc sources, gcc, bootstrap toolchain)
+
+Phase 3: Build→Host Cross-Compiler (only when build ≠ HOST)
+├── binutils              (needs: binutils sources, build→build toolchain)
+├── gcc                   (needs: gcc sources, binutils, build→build toolchain)
+└── glibc                 (needs: glibc sources, gcc, build→build toolchain)
+
+Phase 4: Host→Target Toolchain (built with appropriate compiler)
+├── binutils              (needs: binutils sources, compiler for HOST)
+├── gcc                   (needs: gcc sources, binutils, compiler for HOST)
+└── glibc                 (needs: glibc sources, gcc, compiler for HOST)
 ```
 
 ### Make Target Dependencies
@@ -184,290 +223,46 @@ Phase 2: Final Toolchain
 # Default config file
 CONFIG ?= config.mk
 
-# Top-level user-facing targets
-toolchain: gcc glibc sysroot
-sysroot: glibc linux-headers
-bootstrap: bootstrap-libstdc++
+# Default HOST and TARGET to build system
+HOST ?= $(BUILD)
+TARGET ?= $(HOST)
 
-# User-facing component targets
-gcc: build/$(HOST)/$(TARGET)/.gcc.installed
-binutils: build/$(HOST)/$(TARGET)/.binutils.installed
-glibc: build/$(HOST)/$(TARGET)/.glibc.installed
-linux-headers: build/$(HOST)/$(TARGET)/.linux-headers.installed
-bootstrap-gcc: build/bootstrap/.gcc.installed
-bootstrap-binutils: build/bootstrap/.binutils.installed
-bootstrap-glibc: build/bootstrap/.glibc.installed
-bootstrap-libstdc++: build/bootstrap/.libstdc++.installed
+# User-facing component targets (affected by HOST/TARGET)
+gcc: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed
+binutils: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.binutils.installed
+glibc: build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.glibc.installed
 
-# Bootstrap phase - configure/build/install chain
-build/bootstrap/.binutils.configured: | src/binutils-$(BINUTILS_VERSION)/
-	# Configure bootstrap binutils
-	@mkdir -p $(dir $@) && touch $@
+# Bootstrap component targets (unaffected by HOST/TARGET)
+bootstrap-gcc: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
+bootstrap-binutils: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.binutils.installed
+bootstrap-glibc: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.glibc.installed
+bootstrap-libstdc++: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
 
-build/bootstrap/.binutils.built: build/bootstrap/.binutils.configured
-	# Build bootstrap binutils
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.binutils.installed: build/bootstrap/.binutils.built
-	# Install bootstrap binutils
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.gcc.configured: bootstrap-binutils | src/gcc-$(GCC_VERSION)/
-	# Configure bootstrap gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.gcc.built: build/bootstrap/.gcc.configured
-	# Build bootstrap gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.gcc.installed: build/bootstrap/.gcc.built
-	# Install bootstrap gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.linux-headers.installed: | src/linux-$(LINUX_VERSION)/
-	# Install Linux headers
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.glibc.configured: bootstrap-gcc linux-headers | src/glibc-$(GLIBC_VERSION)/
-	# Configure bootstrap glibc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.glibc.built: build/bootstrap/.glibc.configured
-	# Build bootstrap glibc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.glibc.installed: build/bootstrap/.glibc.built
-	# Install bootstrap glibc
-	@mkdir -p $(dir $@) && touch $@
-
-build/bootstrap/.libstdc++.installed: bootstrap-gcc bootstrap-glibc
-	# Build and install libstdc++
-	@mkdir -p $(dir $@) && touch $@
-
-# Final phase - configure/build/install chain
-build/$(HOST)/$(TARGET)/.binutils.configured: bootstrap-libstdc++ | src/binutils-$(BINUTILS_VERSION)/
-	# Configure final binutils
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.binutils.built: build/$(HOST)/$(TARGET)/.binutils.configured
-	# Build final binutils
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.binutils.installed: build/$(HOST)/$(TARGET)/.binutils.built
-	# Install final binutils
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.gcc.configured: binutils bootstrap-libstdc++ | src/gcc-$(GCC_VERSION)/
-	# Configure final gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.gcc.built: build/$(HOST)/$(TARGET)/.gcc.configured
-	# Build final gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.gcc.installed: build/$(HOST)/$(TARGET)/.gcc.built
-	# Install final gcc
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.glibc.configured: gcc bootstrap-libstdc++ | src/glibc-$(GLIBC_VERSION)/
-	# Configure final glibc (clean)
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.glibc.built: build/$(HOST)/$(TARGET)/.glibc.configured
-	# Build final glibc
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.glibc.installed: build/$(HOST)/$(TARGET)/.glibc.built
-	# Install final glibc
-	@mkdir -p $(dir $@) && touch $@
-
-build/$(HOST)/$(TARGET)/.linux-headers.installed: | src/linux-$(LINUX_VERSION)/
-	# Install Linux headers for target
-	@mkdir -p $(dir $@) && touch $@
-
-# Source extraction (version-specific patches)
-src/binutils-$(BINUTILS_VERSION)/: dl/binutils-$(BINUTILS_VERSION).tar.gz patches/binutils-$(BINUTILS_VERSION)/
-	# Extract tarball and apply binutils patches
-	@touch $@
-
-src/gcc-$(GCC_VERSION)/: dl/gcc-$(GCC_VERSION).tar.gz patches/gcc-$(GCC_VERSION)/
-	# Extract tarball and apply gcc patches
-	@touch $@
-
-src/glibc-$(GLIBC_VERSION)/: dl/glibc-$(GLIBC_VERSION).tar.gz patches/glibc-$(GLIBC_VERSION)/
-	# Extract tarball and apply glibc patches
-	@touch $@
-
-src/linux-$(LINUX_VERSION)/: dl/linux-$(LINUX_VERSION).tar.gz patches/linux-$(LINUX_VERSION)/
-	# Extract tarball and apply linux patches
-	@touch $@
-
-# Download targets
-dl/%.tar.gz: $(CONFIG)
-	# Download and verify checksum
-
-# Clean targets
-clean:
-	rm -rf build/ out/
-
-clean-downloads:
-	rm -rf dl/
-
-clean-sources:
-	rm -rf src/
-
-# Component-specific clean targets
-clean-gcc:
-	rm -f build/$(HOST)/$(TARGET)/.gcc.*
-
-clean-binutils:
-	rm -f build/$(HOST)/$(TARGET)/.binutils.*
-
-clean-glibc:
-	rm -f build/$(HOST)/$(TARGET)/.glibc.*
-
-clean-bootstrap-gcc:
-	rm -f build/bootstrap/.gcc.*
-
-clean-bootstrap-binutils:
-	rm -f build/bootstrap/.binutils.*
-
-clean-bootstrap-glibc:
-	rm -f build/bootstrap/.glibc.*
-
-clean-bootstrap:
-	rm -rf build/bootstrap/
-```
-
-### Cross-Compilation Dependencies
-True native builds require HOST == TARGET == build system. Otherwise we need explicit native targets:
-
-```makefile
-# Detect build system
-BUILD := $(shell uname -s | tr A-Z a-z)/$(shell uname -m)
-
-# Check if this is a native build (HOST and TARGET both equal build system)
-IS_NATIVE := $(and $(filter $(HOST),$(BUILD)),$(filter $(TARGET),$(BUILD)))
-
-# Bootstrap only allowed for native builds
-bootstrap: bootstrap-libstdc++
-bootstrap-libstdc++:
-ifeq ($(IS_NATIVE),)
-	$(error Bootstrap only supported for native builds. Use HOST=$(BUILD) TARGET=$(BUILD))
-endif
-
-# Handle native vs cross-compilation
-ifeq ($(IS_NATIVE),)
-  # Cross builds need native toolchain first
-  gcc: native-gcc
-  binutils: native-binutils
-
-  # Native toolchain targets (only for cross builds)
-  native-gcc: src/gcc-$(GCC_VERSION)/ native-binutils bootstrap-libstdc++
-  native-binutils: src/binutils-$(BINUTILS_VERSION)/ bootstrap-libstdc++
+# Conditional file dependencies based on HOST/TARGET relationship
+ifeq ($(HOST),$(BUILD))
+  # Native case: final depends directly on bootstrap
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: bootstrap-libstdc++
 else
-  # For native builds, native-* targets are aliases to avoid duplication
-  native-gcc: gcc
-  native-binutils: binutils
+  # Cross-compilation case: final depends on cross-compiler
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/cross/$(BUILD)-to-$(HOST)/.gcc.installed
+  # Cross-compiler depends on native toolchain
+  build/cross/$(BUILD)-to-$(HOST)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
+  # Native toolchain depends on bootstrap
+  build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: bootstrap-libstdc++
 endif
 ```
 
 ### Key Insights
-1. **Bootstrap toolchain must complete** before any final phase builds
-2. **Clean glibc rebuild** ensures final toolchain uses properly built glibc
-3. **Cross-compilers depend on native toolchain** when HOST ≠ TARGET
-4. **Parallel builds possible** within each phase but not across phases
-5. **Source extraction** happens automatically via pattern rule
-6. **Sysroot assembly** happens after final glibc is built
-7. **Downloads can happen in parallel** and early
+1. **Simplified user interface** - `gcc`, `binutils`, `glibc` targets affected by HOST/TARGET variables
+2. **Bootstrap targets unchanged** - always build for build system regardless of HOST/TARGET
+3. **Conditional file dependencies** - same target names resolve to different dependency chains
+4. **Cross-compiler conditional** - only built when build ≠ HOST
+5. **Automatic toolchain naming** - TARGET architecture/OS/libc + config suffix
+6. **Consistent file structure** - bootstrap and final toolchains have same arch/toolchain-name/ pattern
+7. **Clean rebuilds at each phase** - ensures proper linking and dependencies
+8. **Parallel builds possible** within each phase but not across phases
+9. **Source extraction** happens automatically via pattern rule
+10. **Sysroot assembly** happens after final glibc is built
+11. **Downloads can happen in parallel** and early
 
 ## Implementation Plan
-
-### Phase 1: Core Infrastructure (Foundation)
-1. ✅ **Create config.mk**
-   - Extract versions and checksums from `script/common.sh`
-   - Test with `include config.mk` in simple makefile
-
-2. ✅ **Set up parallel build infrastructure**
-   - Use `$(MAKE)` variable for job server inheritance
-   - Design sentinel file structure for parallel safety
-   - Test with `make -j` from the start
-
-3. ✅ **Implement download system**
-   - Port `script/download.sh` logic to makefile targets
-   - Create `dl/%.tar.gz: $(CONFIG)` rule with checksum verification
-   - Test downloading all packages (can be parallel)
-
-4. ✅ **Implement source extraction**
-   - Create version-specific extraction rules
-   - Port patch application logic from scripts
-   - Test extraction of all packages with patches
-
-### Phase 2: Bootstrap Build System (Native Only)
-5. ✅ **Port bootstrap-binutils**
-   - Convert `script/build-binutils.sh --bootstrap` to makefile rule
-   - Create `build/bootstrap/.binutils.installed` target with parallel-safe rules
-   - Test bootstrap binutils build
-
-6. ✅ **Port bootstrap-gcc**
-   - Convert `script/build-gcc.sh --bootstrap` to makefile rule
-   - Create `build/bootstrap/.gcc.installed`, etc. targets with job server support
-   - Test bootstrap gcc build
-
-7. ✅ **Port linux-headers and bootstrap-glibc**
-   - Convert `script/build-linux-headers.sh` and `script/build-glibc.sh`
-   - Create header installation and bootstrap glibc targets
-
-8. ✅ **Build and install bootstrap libstdc++**
-   - Convert `script/build-libstdc++.sh` to makefile rule
-   - Only needed for bootstrap phase (not final toolchain)
-   - Test bootstrap libstdc++ build
-
-### Phase 3: Final Build System (Native Only)
-9. ✅ **Port final binutils and gcc**
-   - Convert final versions of build scripts
-   - Create `build/$(HOST)/$(TARGET)/.gcc.done` targets
-   - Test final toolchain build
-
-10. ✅ **Port final glibc (clean rebuild)**
-    - Implement clean glibc rebuild logic
-    - Test complete native toolchain end-to-end
-
-11. **Make toolchain relocatable**
-    - Incorporate ld-linux-shim and make-reloc.sh
-
-### Phase 4: Cross-Compilation Support
-12. **Implement cross-compilation logic**
-    - Add BUILD_SYSTEM detection and IS_NATIVE logic
-    - Create native-* target aliases
-    - Test cross-compilation dependencies
-
-13. **Add sysroot assembly**
-    - Implement sysroot target logic
-    - Test complete cross-compilation workflow
-
-### Phase 5: Polish and Testing
-14. **Add convenience features**
-    - Implement clean targets
-    - Add parallel build optimizations
-    - Test with `make -j`
-
-15. **Comprehensive testing**
-    - Test native builds (aarch64→aarch64)
-    - Test cross-compilation (aarch64→x86_64)
-    - Compare outputs with script-based builds
-    - Test with different config files
-
-### Phase 6: Documentation and Migration
-16. **Update documentation**
-    - Update README.md with makefile usage
-    - Document config file format
-    - Add troubleshooting guide
-
-### Implementation Notes
-- **Start simple**: Begin with native builds only, add cross-compilation later
-- **Test incrementally**: Each phase should produce working results
-- **Preserve scripts**: Keep scripts working during transition for comparison
-- **Version compatibility**: Ensure config.mk format is extensible for future needs
-- **Testing directory**: Always use `/home/david/buildroot` as working directory for testing scripts.
-- **Makefile location**: Always call make with `make -f /path/to/mktoolchain/Makefile -j$(nproc)`
