@@ -1,21 +1,31 @@
-bootstrap-binutils: $(BB)/.binutils.installed
-bootstrap-binutils: HOST_TRIPLE := $(BUILD_TRIPLE)
-bootstrap-binutils: TARGET_TRIPLE := $(BUILD_TRIPLE)
-bootstrap-binutils: PREFIX := $(BOOTSTRAP_PREFIX)
-bootstrap-binutils: PATH := $(ORIG_PATH)
-bootstrap-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-binutils: LDFLAGS :=
-bootstrap-binutils: SOURCE_DATE_EPOCH := $(shell cat $(BB)/binutils/src/.timestamp 2>/dev/null || echo 1)
+bootstrap-binutils: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed
+binutils: $(TARGET_BUILD_DIR)/.binutils.installed
 
-binutils: $(B)/.binutils.installed
-binutils: PREFIX := $(NATIVE_PREFIX)
-binutils: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-binutils: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
-binutils: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-binutils: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-binutils: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
-binutils: SOURCE_DATE_EPOCH := $(shell cat $(B)/binutils/src/.timestamp 2>/dev/null || echo 1)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PREFIX := $(BOOTSTRAP_PREFIX)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PATH := $(ORIG_PATH)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(BOOTSTRAP_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
+
+$(HOST_BUILD_DIR)/.binutils.installed: PREFIX := $(HOST_PREFIX)
+$(HOST_BUILD_DIR)/.binutils.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(HOST_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(HOST_BUILD_DIR)=.
+$(HOST_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(HOST_BUILD_DIR)=.
+$(HOST_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(HOST_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
+
+$(HOST_BUILD_DIR)/.binutils.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
+$(HOST_BUILD_DIR)/.binutils.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
+
+$(TARGET_BUILD_DIR)/.binutils.installed: PREFIX := $(TARGET_PREFIX)
+$(TARGET_BUILD_DIR)/.binutils.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(TARGET_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(TARGET_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
+
+$(TARGET_BUILD_DIR)/.binutils.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
+$(TARGET_BUILD_DIR)/.binutils.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
 
 BINUTILS_CONFIG = \
 	--host=$(HOST_TRIPLE) \
@@ -27,7 +37,9 @@ BINUTILS_CONFIG = \
 	--enable-new-dtags \
 	--disable-werror
 
-$(BB)/.binutils.configured $(B)/.binutils.configured: %/.binutils.configured: $(SRC_DIR)/binutils-$(BINUTILS_VERSION)
+.PRECIOUS: %/.binutils.configured %/.binutils.compiled
+
+%/.binutils.configured: $(SRC_DIR)/binutils-$(BINUTILS_VERSION)
 	mkdir -p $*/binutils/build
 	ln -sfn $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $*/binutils/src
 	cd $*/binutils/build && \
@@ -38,11 +50,11 @@ $(BB)/.binutils.configured $(B)/.binutils.configured: %/.binutils.configured: $(
 		../src/configure $(BINUTILS_CONFIG)
 	touch $@
 
-$(BB)/.binutils.compiled $(B)/.binutils.compiled: %/.binutils.compiled: | %/.binutils.configured
+%/.binutils.compiled: %/.binutils.configured
 	cd $*/binutils/build && $(MAKE)
 	touch $@
 
-$(BB)/.binutils.installed $(B)/.binutils.installed: %/.binutils.installed: | %/.binutils.compiled
+%/.binutils.installed: %/.binutils.compiled
 	cd $*/binutils/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
