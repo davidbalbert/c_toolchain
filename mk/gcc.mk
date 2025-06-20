@@ -44,6 +44,7 @@ $(TARGET_BUILD_DIR)/.gcc.installed: PATH := $(CROSS_PREFIX)/bin:$(ORIG_PATH)
 $(TARGET_BUILD_DIR)/.gcc.installed: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG)
 
 $(BOOTSTRAP_BUILD_DIR)/.gcc.configured: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed
+$(BUILD_BUILD_DIR)/.gcc.configured: $(BUILD_BUILD_DIR)/.binutils.installed
 $(TARGET_BUILD_DIR)/.gcc.configured: $(TARGET_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
 $(CROSS_BUILD_DIR)/.gcc.configured: $(CROSS_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
 
