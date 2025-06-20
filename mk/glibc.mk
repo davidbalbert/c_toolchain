@@ -1,14 +1,27 @@
-bootstrap-glibc: $(BB)/.glibc.installed
-bootstrap-glibc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-bootstrap-glibc: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-glibc: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-glibc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/glibc/src/.timestamp 2>/dev/null || echo 1)
+bootstrap-glibc: $(BOOTSTRAP_OUT_DIR)/.glibc.installed
+glibc: $(TARGET_OUT_DIR)/.glibc.installed
 
-glibc: $(B)/.glibc.installed
-glibc: PATH := $(NATIVE_PREFIX)/bin:$(ORIG_PATH)
-glibc: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-glibc: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-glibc: SOURCE_DATE_EPOCH := $(shell cat $(B)/glibc/src/.timestamp 2>/dev/null || echo 1)
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: SOURCE_DATE_EPOCH := $(shell cat $(BOOTSTRAP_BUILD_DIR)/glibc/src/.timestamp 2>/dev/null || echo 1)
+$(BOOTSTRAP_BUILD_DIR)/.glibc.installed: SYSROOT := $(BOOTSTRAP_SYSROOT)
+
+$(CROSS_BUILD_DIR)/.glibc.installed: PATH := $(CROSS_PREFIX)/bin:$(ORIG_PATH)
+$(CROSS_BUILD_DIR)/.glibc.installed: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(CROSS_BUILD_DIR)=.
+$(CROSS_BUILD_DIR)/.glibc.installed: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(CROSS_BUILD_DIR)=.
+$(CROSS_BUILD_DIR)/.glibc.installed: SOURCE_DATE_EPOCH := $(shell cat $(CROSS_BUILD_DIR)/glibc/src/.timestamp 2>/dev/null || echo 1)
+$(CROSS_BUILD_DIR)/.glibc.installed: SYSROOT := $(CROSS_SYSROOT)
+
+$(TARGET_BUILD_DIR)/.glibc.installed: PATH := $(TARGET_PREFIX)/bin:$(ORIG_PATH)
+$(TARGET_BUILD_DIR)/.glibc.installed: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.glibc.installed: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.glibc.installed: SOURCE_DATE_EPOCH := $(shell cat $(TARGET_BUILD_DIR)/glibc/src/.timestamp 2>/dev/null || echo 1)
+$(TARGET_BUILD_DIR)/.glibc.installed: SYSROOT := $(TARGET_SYSROOT)
+
+$(BOOTSTRAP_BUILD_DIR)/.glibc.configured: $(BOOTSTRAP_OUT_DIR)/.gcc.installed $(BOOTSTRAP_OUT_DIR)/.linux-headers.installed
+$(CROSS_BUILD_DIR)/.glibc.configured: $(CROSS_OUT_DIR)/.gcc.installed $(BOOTSTRAP_OUT_DIR)/.linux-headers.installed
+$(TARGET_BUILD_DIR)/.glibc.configured: $(TARGET_OUT_DIR)/.gcc.installed $(BOOTSTRAP_OUT_DIR)/.linux-headers.installed
 
 GLIBC_CONFIG = \
 	--prefix=/usr \
@@ -17,9 +30,7 @@ GLIBC_CONFIG = \
 	--with-headers=$(SYSROOT)/usr/include \
 	libc_cv_slibdir=/usr/lib
 
-$(BB)/.glibc.configured: | bootstrap-gcc linux-headers
-$(B)/.glibc.configured: | gcc linux-headers
-$(BB)/.glibc.configured $(B)/.glibc.configured: %/.glibc.configured: $(SRC_DIR)/glibc-$(GLIBC_VERSION)
+%/.glibc.configured: $(SRC_DIR)/glibc-$(GLIBC_VERSION)
 	mkdir -p $*/glibc/build $(SYSROOT)
 	ln -sfn $(SRC_DIR)/glibc-$(GLIBC_VERSION) $*/glibc/src
 	cd $*/glibc/build && \
@@ -29,11 +40,11 @@ $(BB)/.glibc.configured $(B)/.glibc.configured: %/.glibc.configured: $(SRC_DIR)/
 		../src/configure $(GLIBC_CONFIG)
 	touch $@
 
-$(BB)/.glibc.compiled $(B)/.glibc.compiled: %/.glibc.compiled: | %/.glibc.configured
+%/.glibc.compiled: %/.glibc.configured
 	cd $*/glibc/build && $(MAKE)
 	touch $@
 
-$(BB)/.glibc.installed $(B)/.glibc.installed: %/.glibc.installed: | %/.glibc.compiled
+%/.glibc.installed: %/.glibc.compiled
 	cd $*/glibc/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
