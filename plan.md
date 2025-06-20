@@ -236,7 +236,7 @@ endif
 
 # Construct toolchain names for different phases
 BUILD_TOOLCHAIN_NAME := $(BUILD)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
-HOST_TOOLCHAIN_NAME := $(HOST)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
+CROSS_TOOLCHAIN_NAME := $(HOST)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
 TARGET_TOOLCHAIN_NAME := $(TARGET)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
 
 # User-facing phony targets (convenience aliases only)
@@ -259,15 +259,15 @@ else ifeq ($(HOST),$(BUILD))
   build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
 # Case 3: HOST ≠ BUILD (cross-compilation)
 else
-  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed
-  build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
+  build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(CROSS_TOOLCHAIN_NAME)/.gcc.installed
+  build/linux/$(BUILD)/$(CROSS_TOOLCHAIN_NAME)/.gcc.installed: build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed
   build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.libstdc++.installed
 endif
 
 # Target-specific variables set on actual .installed file targets
 build/bootstrap/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = bootstrap
 build/linux/$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = native
-build/linux/$(BUILD)/$(HOST_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = cross
+build/linux/$(BUILD)/$(CROSS_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = cross
 build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = final
 ```
 
