@@ -4,12 +4,10 @@ $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(BOOTSTRAP_BUILD_
 $(CROSS_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(CROSS_BUILD_DIR)
 $(TARGET_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(TARGET_BUILD_DIR)
 
-# override sysroot for bootstrap
-$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: SYSROOT := $(BUILD_SYSROOT)
-
 %/.linux-headers.installed: TARGET_ARCH = $(word 1,$(subst -, ,$(TARGET_TRIPLE)))
 %/.linux-headers.installed: KERNEL_ARCH = $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH))))
 %/.linux-headers.installed: SYSROOT = $(patsubst $(BUILD_DIR)/%,$(OUT_DIR)/%/sysroot,$(BUILD_DIR))
+$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: SYSROOT := $(BUILD_SYSROOT)
 
 %/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
 	$(eval TMPDIR := $(shell mktemp -d))
