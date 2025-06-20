@@ -1,7 +1,7 @@
 %/.linux-headers.installed: PATH := $(ORIG_PATH)
 
 $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(BOOTSTRAP_BUILD_DIR)
-$(HOST_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(HOST_BUILD_DIR)
+$(CROSS_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(CROSS_BUILD_DIR)
 $(TARGET_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(TARGET_BUILD_DIR)
 
 # override sysroot for bootstrap
