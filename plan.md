@@ -236,7 +236,7 @@ endif
 
 # Construct toolchain names for different phases
 BUILD_TOOLCHAIN_NAME := $(BUILD)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
-HOST_TOOLCHAIN_NAME := $(HOST)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)  
+HOST_TOOLCHAIN_NAME := $(HOST)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
 TARGET_TOOLCHAIN_NAME := $(TARGET)-linux-$(ENV)-$(TOOLCHAIN_SUFFIX)
 
 # User-facing phony targets (convenience aliases only)
@@ -283,4 +283,102 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 9. **Source extraction** happens automatically via pattern rule
 10. **Downloads can happen in parallel** and early
 
+## Changes Needed to Migrate from Current Scripts
+
+### Toolchain Naming
+- Keep `TOOLCHAIN_NAME := gcc-15.1.0` in config.mk
+- Change final toolchain directory name to `$(TARGET_ARCH)-linux-gnu-$(TOOLCHAIN_NAME)`
+- So `aarch64-linux-gnu` target becomes `aarch64-linux-gnu-gnu-gcc-15.1.0`
+- Update all path variables to use new computed toolchain name
+
+### Directory Structure
+- Keep `os/arch` format for BUILD/HOST/TARGET
+- Use consistent `out/OS/ARCH/full-toolchain-name/` pattern
+- Eliminate separate bootstrap path logic, unify into single pattern
+
+### Makefile Interface
+- Move all target-specific variables from phony targets to `.installed` file targets
+- Keep component targets (`gcc`, `binutils`, `glibc`) as aliases to `.installed` files
+
+### Build Logic
+- Add conditional logic for multi-phase builds based on BUILD/HOST/TARGET relationships
+- Replace hardcoded `$(BB)/` and `$(B)/` with generic pattern rules
+- Add proper dependency chains for cross-compilation scenarios
+- Unify bootstrap and regular build into single pattern rules
+
+### Path Variables & Build Directories
+- Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
+- Replace hardcoded `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` with unified path computation
+- Remove separate bootstrap vs regular path logic - use single pattern for all toolchains
+
+### Dependencies & Ordering
+- Make dependencies conditional based on BUILD/HOST/TARGET relationships (not hardcoded `| bootstrap-binutils`)
+- Add logic to determine which phase needs which components
+- Replace hardcoded prerequisite chains with computed dependency relationships
+
+### Pattern Rules
+- Current pattern rules hardcode `$(BB)` and `$(B)` paths - need generic rules that work for any toolchain path
+- Unify `.configured`, `.compiled`, `.installed` patterns across all phases
+- Remove duplication between bootstrap and regular build rules
+
+### Target-Specific Variables
+- Current `.mk` files set variables on `.configured` targets instead of `.installed` targets
+- Need to move all build-specific variables to the final `.installed` file targets
+- Variables like `SYSROOT_SYMLINK`, `SYSROOT_SYMLINK_DIR` are hardcoded to current path structure
+
+### Keep Unchanged
+- ✅ `TOOLCHAIN_NAME` variable name in config.mk
+- ✅ `os/arch` format
+- ✅ `os_arch_to_triple` function
+- ✅ Current config.mk structure
+
 ## Implementation Plan
+
+### Step 1: Update Path Computation and Toolchain Naming
+- [ ] Add `FULL_TOOLCHAIN_NAME` variable: `$(TARGET_TRIPLE)-gnu-$(TOOLCHAIN_NAME)`
+- [ ] Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
+- [ ] Update `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` to use new naming scheme
+- [ ] Test that new paths generate correctly for different BUILD/HOST/TARGET combinations
+
+### Step 2: Add BUILD/HOST/TARGET Conditional Logic  
+- [ ] Add logic to determine which build phases are needed:
+  - Native build: HOST==BUILD==TARGET (1 phase)
+  - Cross compile: HOST==BUILD≠TARGET (2 phases: bootstrap + final)
+  - Cross compile for different host: HOST≠BUILD (3-4 phases)
+- [ ] Create variables to track which toolchains need to be built
+- [ ] Add conditional dependency chains based on build scenario
+
+### Step 3: Refactor Pattern Rules to be Generic
+- [ ] Replace hardcoded `$(BB)/.component.{configured,compiled,installed}` patterns
+- [ ] Replace hardcoded `$(B)/.component.{configured,compiled,installed}` patterns  
+- [ ] Create single generic pattern rule that works for any toolchain path
+- [ ] Remove duplication between bootstrap and regular build rules
+- [ ] Test that pattern rules work for all toolchain paths
+
+### Step 4: Move Target-Specific Variables to .installed Targets
+- [ ] Move variables from `bootstrap-component:` to `path/.component.installed:` in binutils.mk
+- [ ] Move variables from `component:` to `path/.component.installed:` in binutils.mk
+- [ ] Repeat for gcc.mk, glibc.mk, linux.mk
+- [ ] Update hardcoded paths in variables like `SYSROOT_SYMLINK`, `SYSROOT_SYMLINK_DIR`
+- [ ] Test that variables are set correctly during builds
+
+### Step 5: Update Dependencies and Prerequisites
+- [ ] Replace hardcoded `| bootstrap-binutils` with conditional dependencies
+- [ ] Make gcc dependencies conditional on build phase (bootstrap-binutils vs binutils)
+- [ ] Make glibc dependencies conditional on build phase (bootstrap-gcc vs gcc)
+- [ ] Add proper ordering within phases (binutils → gcc → glibc)
+- [ ] Test dependency resolution for different build scenarios
+
+### Step 6: Update Phony Targets to be Pure Aliases
+- [ ] Change phony targets (gcc, binutils, glibc) to point to appropriate `.installed` files
+- [ ] Remove target-specific variable assignments from phony targets
+- [ ] Add bootstrap component aliases (bootstrap-gcc, bootstrap-binutils, etc.)
+- [ ] Test that `make gcc HOST=x TARGET=y` works correctly
+
+### Step 7: Testing and Validation
+- [ ] Test native build scenario: `make gcc HOST=x86_64 TARGET=x86_64`
+- [ ] Test cross-compile scenario: `make gcc HOST=x86_64 TARGET=aarch64`  
+- [ ] Test bootstrap scenario: `make bootstrap-gcc`
+- [ ] Verify all generated paths and toolchain names are correct
+- [ ] Verify reproducibility flags are still applied correctly
+- [ ] Test parallel builds work correctly
