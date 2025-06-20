@@ -1,25 +1,52 @@
-bootstrap-gcc: $(BB)/.gcc.installed
-bootstrap-gcc: HOST_TRIPLE := $(BUILD_TRIPLE)
-bootstrap-gcc: TARGET_TRIPLE := $(BUILD_TRIPLE)
-bootstrap-gcc: PREFIX := $(BOOTSTRAP_PREFIX)
-bootstrap-gcc: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-bootstrap-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-gcc: LDFLAGS :=
-bootstrap-gcc: SOURCE_DATE_EPOCH := $(shell cat $(BB)/gcc/src/.timestamp 2>/dev/null || echo 1)
-bootstrap-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_BOOTSTRAP_CONFIG)
+bootstrap-gcc: $(BOOTSTRAP_OUT_DIR)/.gcc.installed
+gcc: $(TARGET_OUT_DIR)/.gcc.installed
 
-gcc: $(B)/.gcc.installed
-gcc: PREFIX := $(NATIVE_PREFIX)
-# Use native binutils and bootstrap gcc
-gcc: PATH := $(NATIVE_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-gcc: DYNAMIC_LINKER := $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
-gcc: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-gcc: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(B)=.
-gcc: LDFLAGS := -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
-gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || echo 1)
-gcc: BUILD_TIME_TOOLS := $(if $(wildcard $(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc),,--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin)
-gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: PREFIX := $(BOOTSTRAP_PREFIX)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: OUT_DIR := $(BOOTSTRAP_OUT_DIR)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: SYSROOT := $(BOOTSTRAP_SYSROOT)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: SOURCE_DATE_EPOCH := $(shell if [ -f $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp ]; then cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp; else echo 1; fi)
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK := ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK_DIR := $(BOOTSTRAP_OUT_DIR)/toolchain
+$(BOOTSTRAP_BUILD_DIR)/.gcc.installed: GCC_CONFIG := $(GCC_BASE_CONFIG) $(GCC_BOOTSTRAP_CONFIG)
+
+$(HOST_BUILD_DIR)/.gcc.installed: PREFIX := $(HOST_PREFIX)
+$(HOST_BUILD_DIR)/.gcc.installed: OUT_DIR := $(HOST_OUT_DIR)
+$(HOST_BUILD_DIR)/.gcc.installed: SYSROOT := $(SYSROOT)
+$(HOST_BUILD_DIR)/.gcc.installed: PATH := $(HOST_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(HOST_BUILD_DIR)/.gcc.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(HOST_BUILD_DIR)=.
+$(HOST_BUILD_DIR)/.gcc.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(HOST_BUILD_DIR)=.
+$(HOST_BUILD_DIR)/.gcc.installed: SOURCE_DATE_EPOCH := $(shell if [ -f $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp ]; then cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp; else echo 1; fi)
+$(HOST_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK := ../sysroot
+$(HOST_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK_DIR := $(HOST_OUT_DIR)/toolchain
+$(HOST_BUILD_DIR)/.gcc.installed: BUILD_TIME_TOOLS := $(if $(wildcard $(HOST_PREFIX)/bin/$(TARGET_TRIPLE)-gcc),,--with-build-time-tools=$(HOST_PREFIX)/$(TARGET_TRIPLE)/bin)
+$(HOST_BUILD_DIR)/.gcc.installed: GCC_CONFIG := $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
+
+$(HOST_BUILD_DIR)/.gcc.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
+$(HOST_BUILD_DIR)/.gcc.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
+
+$(TARGET_BUILD_DIR)/.gcc.installed: PREFIX := $(TARGET_PREFIX)
+$(TARGET_BUILD_DIR)/.gcc.installed: OUT_DIR := $(TARGET_OUT_DIR)
+$(TARGET_BUILD_DIR)/.gcc.installed: SYSROOT := $(SYSROOT)
+$(TARGET_BUILD_DIR)/.gcc.installed: PATH := $(TARGET_PREFIX)/bin:$(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(TARGET_BUILD_DIR)/.gcc.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.gcc.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
+$(TARGET_BUILD_DIR)/.gcc.installed: SOURCE_DATE_EPOCH := $(shell cat $(TARGET_BUILD_DIR)/gcc/src/.timestamp 2>/dev/null || echo 1)
+$(TARGET_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK := ../sysroot
+$(TARGET_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK_DIR := $(TARGET_OUT_DIR)/toolchain
+$(TARGET_BUILD_DIR)/.gcc.installed: BUILD_TIME_TOOLS := $(if $(wildcard $(TARGET_PREFIX)/bin/$(TARGET_TRIPLE)-gcc),,--with-build-time-tools=$(TARGET_PREFIX)/$(TARGET_TRIPLE)/bin)
+$(TARGET_BUILD_DIR)/.gcc.installed: GCC_CONFIG := $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
+
+$(TARGET_BUILD_DIR)/.gcc.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
+$(TARGET_BUILD_DIR)/.gcc.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
+
+$(BOOTSTRAP_BUILD_DIR)/.gcc.configured: $(BOOTSTRAP_OUT_DIR)/.binutils.installed
+$(TARGET_BUILD_DIR)/.gcc.configured: $(TARGET_OUT_DIR)/.binutils.installed $(BOOTSTRAP_OUT_DIR)/.glibc.installed
+$(HOST_BUILD_DIR)/.gcc.configured: $(HOST_OUT_DIR)/.binutils.installed $(BOOTSTRAP_OUT_DIR)/.glibc.installed
 
 GCC_BASE_CONFIG = \
 	--host=$(HOST_TRIPLE) \
@@ -52,16 +79,8 @@ GCC_FINAL_CONFIG = \
 	--enable-host-pie \
 	--disable-fixincludes
 
-$(BB)/.gcc.configured: SYSROOT_SYMLINK = ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot
-$(BB)/.gcc.configured: SYSROOT_SYMLINK_DIR = $(BO)/toolchain
-$(B)/.gcc.configured: SYSROOT_SYMLINK = ../sysroot
-$(B)/.gcc.configured: SYSROOT_SYMLINK_DIR = $(O)/toolchain
-
-$(BB)/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | bootstrap-binutils
-$(B)/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | binutils bootstrap-glibc
-
-$(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured:
-	mkdir -p $*/gcc/build $(PREFIX) $(O)/toolchain $(O)/sysroot $(SYSROOT_SYMLINK_DIR)
+%/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION)
+	mkdir -p $*/gcc/build $(PREFIX) $(OUT_DIR)/toolchain $(OUT_DIR)/sysroot $(SYSROOT_SYMLINK_DIR)
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
 	ln -sfn $(SYSROOT_SYMLINK) $(SYSROOT_SYMLINK_DIR)/sysroot
 	cd $*/gcc/build && \
@@ -72,14 +91,14 @@ $(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured:
 		../src/configure $(GCC_CONFIG)
 	touch $@
 
-$(BB)/.gcc.compiled $(B)/.gcc.compiled: %/.gcc.compiled: | %/.gcc.configured
+%/.gcc.compiled: %/.gcc.configured
 	cd $*/gcc/build && \
 		$(MAKE) configure-gcc && \
 		sed -i 's/ --with-build-sysroot=[^ ]*//' gcc/configargs.h && \
 		$(MAKE)
 	touch $@
 
-$(BB)/.gcc.installed $(B)/.gcc.installed: %/.gcc.installed: | %/.gcc.compiled
+%/.gcc.installed: %/.gcc.compiled
 	cd $*/gcc/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
