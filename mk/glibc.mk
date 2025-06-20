@@ -3,7 +3,7 @@ glibc: $(TARGET_BUILD_DIR)/.glibc.installed
 
 %/.glibc.installed: CFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
 %/.glibc.installed: CXXFLAGS := -O2 -g -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
-%/.glibc.installed: SOURCE_DATE_EPOCH = $(shell cat $*/glibc/src/.timestamp 2>/dev/null || echo 1)
+%/.glibc.installed: SOURCE_DATE_EPOCH = $(shell cat $(SRC_DIR)/glibc-$(GLIBC_VERSION)/.timestamp 2>/dev/null || echo 1)
 
 $(BOOTSTRAP_BUILD_DIR)/.glibc.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
 $(BOOTSTRAP_BUILD_DIR)/.glibc.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)

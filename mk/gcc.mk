@@ -3,11 +3,11 @@ gcc: $(TARGET_BUILD_DIR)/.gcc.installed
 
 %/.gcc.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
 %/.gcc.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
+%/.gcc.installed: SOURCE_DATE_EPOCH = $(shell cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp 2>/dev/null || echo 1)
 
 %/.gcc.installed: SYSROOT_SYMLINK = ../sysroot
 $(BOOTSTRAP_BUILD_DIR)/.gcc.installed: SYSROOT_SYMLINK := ../../../../$(BUILD)/$(BUILD_TOOLCHAIN_NAME)/sysroot
 
-%/.gcc.installed: SOURCE_DATE_EPOCH = $(shell cat $*/gcc/src/.timestamp 2>/dev/null || echo 1)
 %/.gcc.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
 %/.gcc.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
 $(BOOTSTRAP_BUILD_DIR)/.gcc.installed: LDFLAGS :=
