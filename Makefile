@@ -54,13 +54,13 @@ TARGET_OUT_DIR := $(OUT_DIR)/linux/$(HOST_ARCH)/$(TARGET_TOOLCHAIN_NAME)
 # Computed prefixes
 BOOTSTRAP_PREFIX := $(BOOTSTRAP_OUT_DIR)/toolchain
 BUILD_PREFIX := $(BUILD_OUT_DIR)/toolchain
-HOST_PREFIX := $(CROSS_OUT_DIR)/toolchain
+CROSS_PREFIX := $(CROSS_OUT_DIR)/toolchain
 TARGET_PREFIX := $(TARGET_OUT_DIR)/toolchain
 
 # Computed sysroots
 BOOTSTRAP_SYSROOT := $(BOOTSTRAP_OUT_DIR)/sysroot
 BUILD_SYSROOT := $(BUILD_OUT_DIR)/sysroot
-HOST_SYSROOT := $(CROSS_OUT_DIR)/sysroot
+CROSS_SYSROOT := $(CROSS_OUT_DIR)/sysroot
 TARGET_SYSROOT := $(TARGET_OUT_DIR)/sysroot
 
 include $(PROJECT_ROOT)/mk/*.mk

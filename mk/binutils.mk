@@ -1,44 +1,35 @@
 bootstrap-binutils: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed
 binutils: $(TARGET_BUILD_DIR)/.binutils.installed
 
+%/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
+%/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$*=.
+%/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $*/binutils/src/.timestamp 2>/dev/null || echo 1)
+
+%/.binutils.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
+%/.binutils.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed $(BUILD_BUILD_DIR)/.binutils.installed: LDFLAGS :=
+
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PREFIX := $(BOOTSTRAP_PREFIX)
+$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: SYSROOT := $(BUILD_SYSROOT) # there's no bootstrap sysroot
 $(BOOTSTRAP_BUILD_DIR)/.binutils.installed: PATH := $(ORIG_PATH)
-$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
-$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
-$(BOOTSTRAP_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(BOOTSTRAP_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
 
 $(BUILD_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
 $(BUILD_BUILD_DIR)/.binutils.installed: TARGET_TRIPLE := $(BUILD_TRIPLE)
 $(BUILD_BUILD_DIR)/.binutils.installed: PREFIX := $(BUILD_PREFIX)
+$(BUILD_BUILD_DIR)/.binutils.installed: SYSROOT := $(BUILD_SYSROOT)
 $(BUILD_BUILD_DIR)/.binutils.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-$(BUILD_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BUILD_BUILD_DIR)=.
-$(BUILD_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BUILD_BUILD_DIR)=.
-
-$(BUILD_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(BUILD_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
 
 $(CROSS_BUILD_DIR)/.binutils.installed: HOST_TRIPLE := $(BUILD_TRIPLE)
 $(CROSS_BUILD_DIR)/.binutils.installed: TARGET_TRIPLE := $(HOST_TRIPLE)
+$(CROSS_BUILD_DIR)/.binutils.installed: PREFIX := $(CROSS_PREFIX)
+$(CROSS_BUILD_DIR)/.binutils.installed: SYSROOT := $(CROSS_SYSROOT)
 $(CROSS_BUILD_DIR)/.binutils.installed: PATH := $(BUILD_PREFIX)/bin:$(ORIG_PATH)
-$(CROSS_BUILD_DIR)/.binutils.installed: PREFIX := $(HOST_PREFIX)
-$(CROSS_BUILD_DIR)/.binutils.installed: SYSROOT := $(HOST_SYSROOT)
-$(CROSS_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(CROSS_BUILD_DIR)=.
-$(CROSS_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(CROSS_BUILD_DIR)=.
 
-$(CROSS_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(CROSS_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
-$(CROSS_BUILD_DIR)/.binutils.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
-$(CROSS_BUILD_DIR)/.binutils.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
-
-$(TARGET_BUILD_DIR)/.binutils.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 $(TARGET_BUILD_DIR)/.binutils.installed: PREFIX := $(TARGET_PREFIX)
 $(TARGET_BUILD_DIR)/.binutils.installed: SYSROOT := $(TARGET_SYSROOT)
-$(TARGET_BUILD_DIR)/.binutils.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
-$(TARGET_BUILD_DIR)/.binutils.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(TARGET_BUILD_DIR)=.
-
-$(TARGET_BUILD_DIR)/.binutils.installed: SOURCE_DATE_EPOCH = $(shell cat $(TARGET_BUILD_DIR)/binutils/src/.timestamp 2>/dev/null || echo 1)
-$(TARGET_BUILD_DIR)/.binutils.installed: DYNAMIC_LINKER = $(shell find $(SYSROOT)/usr/lib -name "ld-linux-*.so.*" -type f -printf "%f\n" | head -n 1 || (echo "Error: No dynamic linker found in $(SYSROOT)/usr/lib" >&2; exit 1))
-$(TARGET_BUILD_DIR)/.binutils.installed: LDFLAGS = -L$(SYSROOT)/usr/lib -Wl,-rpath=$(SYSROOT)/usr/lib -Wl,--dynamic-linker=$(SYSROOT)/usr/lib/$(DYNAMIC_LINKER)
+$(TARGET_BUILD_DIR)/.binutils.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
 
 BINUTILS_CONFIG = \
 	--host=$(HOST_TRIPLE) \
