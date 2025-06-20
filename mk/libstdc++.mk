@@ -1,36 +1,37 @@
-bootstrap-libstdc++: $(BB)/.libstdc++.installed
-bootstrap-libstdc++: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
-bootstrap-libstdc++: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-libstdc++: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BB)=.
-bootstrap-libstdc++: SOURCE_DATE_EPOCH := $(shell cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp 2>/dev/null || echo 1)
+bootstrap-libstdc++: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
 
-LIBSTDCXX_CONFIG := \
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: PATH := $(BOOTSTRAP_PREFIX)/bin:$(ORIG_PATH)
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: CFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: CXXFLAGS := -g0 -O2 -ffile-prefix-map=$(SRC_DIR)=. -ffile-prefix-map=$(BOOTSTRAP_BUILD_DIR)=.
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: SOURCE_DATE_EPOCH := $(shell cat $(SRC_DIR)/gcc-$(GCC_VERSION)/.timestamp 2>/dev/null || echo 1)
+
+LIBSTDCXX_CONFIG = \
 	--prefix=/usr \
-	--host=$(TARGET_TRIPLE) \
+	--host=$(BUILD_TRIPLE) \
 	--disable-multilib \
 	--disable-nls \
 	--disable-libstdcxx-pch \
 	--with-gxx-include-dir=/usr/include/c++/$(GCC_VERSION)
 
-$(BB)/.libstdc++.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | bootstrap-gcc bootstrap-glibc
-	mkdir -p $(BB)/libstdc++/build $(SYSROOT)
-	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION)/libstdc++-v3 $(BB)/libstdc++/src
-	cd $(BB)/libstdc++/build && \
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
+	mkdir -p $(BOOTSTRAP_BUILD_DIR)/libstdc++/build $(BUILD_SYSROOT)
+	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION)/libstdc++-v3 $(BOOTSTRAP_BUILD_DIR)/libstdc++/src
+	cd $(BOOTSTRAP_BUILD_DIR)/libstdc++/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
 		SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) \
 		../src/configure $(LIBSTDCXX_CONFIG)
 	touch $@
 
-$(BB)/.libstdc++.compiled: | $(BB)/.libstdc++.configured
-	cd $(BB)/libstdc++/build && $(MAKE)
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.compiled: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.configured
+	cd $(BOOTSTRAP_BUILD_DIR)/libstdc++/build && $(MAKE)
 	touch $@
 
-$(BB)/.libstdc++.installed: | $(BB)/.libstdc++.compiled
-	cd $(BB)/libstdc++/build && \
+$(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.compiled
+	cd $(BOOTSTRAP_BUILD_DIR)/libstdc++/build && \
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(SYSROOT)/ && \
+		cp -a "$$TMPDIR"/* $(BOOTSTRAP_SYSROOT)/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
