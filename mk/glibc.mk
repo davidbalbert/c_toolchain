@@ -17,7 +17,6 @@ GLIBC_CONFIG = \
 	--with-headers=$(SYSROOT)/usr/include \
 	libc_cv_slibdir=/usr/lib
 
-# Static pattern rules for both bootstrap and final builds
 $(BB)/.glibc.configured: | bootstrap-gcc linux-headers
 $(B)/.glibc.configured: | gcc linux-headers
 $(BB)/.glibc.configured $(B)/.glibc.configured: %/.glibc.configured: $(SRC_DIR)/glibc-$(GLIBC_VERSION)

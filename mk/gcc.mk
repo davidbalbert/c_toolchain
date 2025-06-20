@@ -21,7 +21,6 @@ gcc: SOURCE_DATE_EPOCH := $(shell cat $(B)/gcc/src/.timestamp 2>/dev/null || ech
 gcc: BUILD_TIME_TOOLS := $(if $(wildcard $(NATIVE_PREFIX)/bin/$(TARGET_TRIPLE)-gcc),,--with-build-time-tools=$(NATIVE_PREFIX)/$(TARGET_TRIPLE)/bin)
 gcc: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
 
-# Base config shared by both bootstrap and final
 GCC_BASE_CONFIG = \
 	--host=$(HOST_TRIPLE) \
 	--target=$(TARGET_TRIPLE) \
@@ -34,7 +33,6 @@ GCC_BASE_CONFIG = \
 	--disable-bootstrap \
 	--enable-languages=c,c++
 
-# Additional config for bootstrap build
 GCC_BOOTSTRAP_CONFIG = \
 	--with-glibc-version=$(GLIBC_VERSION) \
 	--with-newlib \
@@ -50,7 +48,6 @@ GCC_BOOTSTRAP_CONFIG = \
 	--without-headers \
 	--with-gxx-include-dir=/sysroot/usr/include/c++/$(GCC_VERSION)
 
-# Additional config for final build
 GCC_FINAL_CONFIG = \
 	--enable-host-pie \
 	--disable-fixincludes
