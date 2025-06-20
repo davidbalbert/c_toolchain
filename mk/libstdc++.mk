@@ -12,15 +12,9 @@ LIBSTDCXX_CONFIG := \
 	--disable-libstdcxx-pch \
 	--with-gxx-include-dir=/usr/include/c++/$(GCC_VERSION)
 
-$(BB)/libstdc++/src: $(BB)/.libstdc++.linked
-$(BB)/libstdc++/build:
-	mkdir -p $@
-
-$(BB)/.libstdc++.linked: $(SRC_DIR)/gcc-$(GCC_VERSION) | $(BB)/libstdc++
-	ln -sfn $</libstdc++-v3 $(BB)/libstdc++/src
-	touch $@
-
-$(BB)/.libstdc++.configured: | bootstrap-gcc bootstrap-glibc $(BB)/libstdc++/src $(BB)/libstdc++/build
+$(BB)/.libstdc++.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | bootstrap-gcc bootstrap-glibc
+	mkdir -p $(BB)/libstdc++/build $(SYSROOT)
+	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION)/libstdc++-v3 $(BB)/libstdc++/src
 	cd $(BB)/libstdc++/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \
@@ -40,6 +34,3 @@ $(BB)/.libstdc++.installed: | $(BB)/.libstdc++.compiled
 		cp -a "$$TMPDIR"/* $(SYSROOT)/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
-
-$(BB)/libstdc++:
-	mkdir -p $@

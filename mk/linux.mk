@@ -1,20 +1,14 @@
 linux-headers: $(B)/.linux-headers.installed
 linux-headers: PATH := $(ORIG_PATH)
 
-$(B)/linux-headers/src: $(B)/.linux-headers.linked
-$(B)/linux-headers/build:
-	mkdir -p $@
-
-$(B)/.linux-headers.linked: $(SRC_DIR)/linux-$(LINUX_VERSION) | $(B)/linux-headers
-	ln -sfn $< $(B)/linux-headers/src
-	touch $@
-
-$(B)/.linux-headers.installed: $(B)/.linux-headers.linked | $(B)/linux-headers/build $(SYSROOT)
+$(B)/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
 	$(eval TARGET_ARCH := $(word 1,$(subst -, ,$(TARGET_TRIPLE))))
 	$(eval KERNEL_ARCH := $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH)))))
 
 	$(eval TMPDIR := $(shell mktemp -d))
 
+	mkdir -p $(B)/linux-headers/build $(SYSROOT)
+	ln -sfn $(SRC_DIR)/linux-$(LINUX_VERSION) $(B)/linux-headers/src
 	cd $(B)/linux-headers/build
 	$(MAKE) -f $(B)/linux-headers/src/Makefile \
 		ARCH="$(KERNEL_ARCH)" \

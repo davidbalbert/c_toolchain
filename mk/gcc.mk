@@ -55,14 +55,18 @@ GCC_FINAL_CONFIG = \
 	--enable-host-pie \
 	--disable-fixincludes
 
-# Config variables are now set as target-specific assignments above
+$(BB)/.gcc.configured: SYSROOT_SYMLINK = ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot
+$(BB)/.gcc.configured: SYSROOT_SYMLINK_DIR = $(BO)/toolchain
+$(B)/.gcc.configured: SYSROOT_SYMLINK = ../sysroot
+$(B)/.gcc.configured: SYSROOT_SYMLINK_DIR = $(O)/toolchain
 
-# Static pattern rules for both bootstrap and final builds
-$(BB)/.gcc.configured: | bootstrap-binutils $(BO)/toolchain/sysroot
-$(B)/.gcc.configured: | binutils bootstrap-glibc
-$(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION)
-	mkdir -p $*/gcc/build
+$(BB)/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | bootstrap-binutils
+$(B)/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) | binutils bootstrap-glibc
+
+$(BB)/.gcc.configured $(B)/.gcc.configured: %/.gcc.configured:
+	mkdir -p $*/gcc/build $(PREFIX) $(O)/toolchain $(O)/sysroot $(SYSROOT_SYMLINK_DIR)
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
+	ln -sfn $(SYSROOT_SYMLINK) $(SYSROOT_SYMLINK_DIR)/sysroot
 	cd $*/gcc/build && \
 		CFLAGS="$(CFLAGS)" \
 		CXXFLAGS="$(CXXFLAGS)" \

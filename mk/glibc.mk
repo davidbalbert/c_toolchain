@@ -21,7 +21,7 @@ GLIBC_CONFIG = \
 $(BB)/.glibc.configured: | bootstrap-gcc linux-headers
 $(B)/.glibc.configured: | gcc linux-headers
 $(BB)/.glibc.configured $(B)/.glibc.configured: %/.glibc.configured: $(SRC_DIR)/glibc-$(GLIBC_VERSION)
-	mkdir -p $*/glibc/build
+	mkdir -p $*/glibc/build $(SYSROOT)
 	ln -sfn $(SRC_DIR)/glibc-$(GLIBC_VERSION) $*/glibc/src
 	cd $*/glibc/build && \
 		CFLAGS="$(CFLAGS)" \

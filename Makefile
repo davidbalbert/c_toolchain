@@ -29,8 +29,6 @@ OUT_DIR := $(BUILD_ROOT)/out
 DL_DIR := $(BUILD_ROOT)/dl
 SRC_DIR := $(BUILD_ROOT)/src
 
-IS_NATIVE := $(and $(filter $(HOST),$(BUILD)),$(filter $(TARGET),$(BUILD)))
-
 # BB = bootstrap build, B = target build
 BB := $(BUILD_DIR)/bootstrap/$(TOOLCHAIN_NAME)
 B := $(BUILD_DIR)/$(HOST)/$(TOOLCHAIN_NAME)
@@ -46,51 +44,7 @@ SYSROOT := $(O)/sysroot
 
 include $(PROJECT_ROOT)/mk/*.mk
 
-$(DL_DIR) $(SRC_DIR):
-	mkdir -p $@
-
-$(BB) $(B):
-	mkdir -p $@
-
-$(BB)/binutils $(BB)/gcc $(B)/binutils $(B)/gcc:
-	mkdir -p $@
-
-$(BO)/toolchain $(O)/toolchain $(O)/sysroot:
-	mkdir -p $@
-
-$(BO)/toolchain/sysroot: $(O)/sysroot $(BO)/toolchain
-	@if [ ! -L $@ ]; then \
-		ln -sfn ../../../$(HOST)/$(TOOLCHAIN_NAME)/sysroot $@; \
-	fi
-
-$(BB)/linux-headers $(B)/linux-headers:
-	mkdir -p $@
-
-$(BB)/glibc $(B)/glibc:
-	mkdir -p $@
-
-$(O)/toolchain/sysroot: $(O)/sysroot $(O)/toolchain
-	ln -sfn ../sysroot $@
-
-.DEFAULT_GOAL := toolchain
-
-.PHONY: toolchain bootstrap download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-libstdc++ linux-headers binutils gcc glibc
-
-toolchain: $(O)/.toolchain.done
-
-bootstrap: $(BO)/.bootstrap.done
-
-$(BO)/.bootstrap.done: $(BO)/.libstdc++.installed | $(BO)
-	@echo "Bootstrap toolchain complete"
-	@touch $@
-
-$(O)/.toolchain.done: $(B)/.gcc.done $(O)/.sysroot.done | $(O)
-	@echo "Target toolchain complete"
-	@touch $@
-
-$(O)/.sysroot.done: $(B)/.glibc.installed $(B)/.linux-headers.installed | $(O)
-	@sleep 1  # Simulate sysroot assembly
-	@touch $@
+.PHONY: download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-libstdc++ linux-headers binutils gcc glibc
 
 clean:
 	rm -rf $(BUILD_DIR) $(OUT_DIR)

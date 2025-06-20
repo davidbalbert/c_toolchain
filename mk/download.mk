@@ -8,12 +8,13 @@ GLIBC_URL := $(GNU_BASE_URL)/glibc/glibc-$(GLIBC_VERSION).tar.gz
 LINUX_MAJOR := $(shell echo $(LINUX_VERSION) | cut -d. -f1)
 LINUX_URL := https://cdn.kernel.org/pub/linux/kernel/v$(LINUX_MAJOR).x/linux-$(LINUX_VERSION).tar.gz
 
-$(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)/glibc-$(GLIBC_VERSION) $(SRC_DIR)/linux-$(LINUX_VERSION): | $(SRC_DIR) $(DL_DIR)
+$(SRC_DIR)/gcc-$(GCC_VERSION) $(SRC_DIR)/binutils-$(BINUTILS_VERSION) $(SRC_DIR)/glibc-$(GLIBC_VERSION) $(SRC_DIR)/linux-$(LINUX_VERSION):
 	$(eval PACKAGE_LC := $(shell echo $(notdir $@) | sed 's/\([^-]*\)-.*/\1/'))
 	$(eval PACKAGE := $(shell echo $(PACKAGE_LC) | tr a-z A-Z))
 	$(eval URL := $($(PACKAGE)_URL))
 	$(eval SHA256 := $($(PACKAGE)_SHA256))
 	$(eval TARBALL := $(DL_DIR)/$(notdir $@).tar.gz)
+	mkdir -p $(SRC_DIR) $(DL_DIR)
 	@if ! [ -f "$(TARBALL)" ] || ! echo "$(SHA256) $(TARBALL)" | sha256sum -c - >/dev/null 2>&1; then \
 		[ -f "$(TARBALL)" ] && rm -f "$(TARBALL)"; \
 		echo "Downloading $(PACKAGE)..."; \
