@@ -283,13 +283,13 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 9. **Source extraction** happens automatically via pattern rule
 10. **Downloads can happen in parallel** and early
 
-## Changes Needed to Migrate from Current Scripts
+## Changes Needed to Migrate from current Makefile setup.
 
 ### Toolchain Naming
 - Keep `TOOLCHAIN_NAME := gcc-15.1.0` in config.mk
-- Change final toolchain directory name to `$(TARGET_ARCH)-linux-gnu-$(TOOLCHAIN_NAME)`
-- So `aarch64-linux-gnu` target becomes `aarch64-linux-gnu-gnu-gcc-15.1.0`
-- Update all path variables to use new computed toolchain name
+- Change toolchain directory names to `$(TARGET_TRIPLE)-$(TOOLCHAIN_NAME)`
+- So `aarch64-linux-gnu` target becomes `aarch64-linux-gnu-gcc-15.1.0`
+- Update all path variables to use new computed toolchain directory names
 
 ### Directory Structure
 - Keep `os/arch` format for BUILD/HOST/TARGET
@@ -299,6 +299,7 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 ### Makefile Interface
 - Move all target-specific variables from phony targets to `.installed` file targets
 - Keep component targets (`gcc`, `binutils`, `glibc`) as aliases to `.installed` files
+- Keep bootstrap component targets (`bootstrap-gcc`, `bootstrap-binutils`, `bootstrap-glibc`, `bootstrap-libstdc++`) as aliases
 
 ### Build Logic
 - Add conditional logic for multi-phase builds based on BUILD/HOST/TARGET relationships
@@ -309,22 +310,33 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 ### Path Variables & Build Directories
 - Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
 - Replace hardcoded `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` with unified path computation
+- Replace hardcoded `$(SYSROOT)` with computed sysroot paths per toolchain
 - Remove separate bootstrap vs regular path logic - use single pattern for all toolchains
 
 ### Dependencies & Ordering
-- Make dependencies conditional based on BUILD/HOST/TARGET relationships (not hardcoded `| bootstrap-binutils`)
+- Eliminate all order-only prerequisites (`| bootstrap-binutils`) since dependencies will be declared on `.installed` files
 - Add logic to determine which phase needs which components
-- Replace hardcoded prerequisite chains with computed dependency relationships
+- Replace hardcoded prerequisite chains with computed dependency relationships based on BUILD/HOST/TARGET
 
 ### Pattern Rules
 - Current pattern rules hardcode `$(BB)` and `$(B)` paths - need generic rules that work for any toolchain path
+- Update linux.mk to use generic paths instead of hardcoded `$(B)`
 - Unify `.configured`, `.compiled`, `.installed` patterns across all phases
 - Remove duplication between bootstrap and regular build rules
 
-### Target-Specific Variables
-- Current `.mk` files set variables on `.configured` targets instead of `.installed` targets
-- Need to move all build-specific variables to the final `.installed` file targets
-- Variables like `SYSROOT_SYMLINK`, `SYSROOT_SYMLINK_DIR` are hardcoded to current path structure
+### Target-Specific Variables & Variable Inheritance
+- Current `.mk` files set variables on phony targets (e.g., `bootstrap-gcc:`) and pattern rules inherit them
+- Need to move all build-specific variables to the final `.installed` file targets to maintain inheritance
+- Variables like `SYSROOT_SYMLINK`, `SYSROOT_SYMLINK_DIR` are hardcoded to current path structure and need computation
+- Ensure variables like `PATH`, `CFLAGS`, `SOURCE_DATE_EPOCH` are available to pattern rules
+
+### Missing Components
+- Add bootstrap-libstdc++ component to new framework (missing from planning)
+- Update linux-headers to work with generic path computation instead of hardcoded `$(B)`
+
+### Clean Targets & Phony Declarations
+- Update clean targets to work with new unified directory structure
+- Update `.PHONY:` declarations to include `bootstrap-libstdc++`, `linux-headers` and remove obsolete targets
 
 ### Keep Unchanged
 - ✅ `TOOLCHAIN_NAME` variable name in config.mk
@@ -335,12 +347,12 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 ## Implementation Plan
 
 ### Step 1: Update Path Computation and Toolchain Naming
-- [ ] Add `FULL_TOOLCHAIN_NAME` variable: `$(TARGET_TRIPLE)-gnu-$(TOOLCHAIN_NAME)`
 - [ ] Replace hardcoded `BB`, `B`, `BO`, `O` variables with computed paths based on BUILD/HOST/TARGET
-- [ ] Update `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` to use new naming scheme
+- [ ] Use `$(TARGET_TRIPLE)-$(TOOLCHAIN_NAME)` directly for toolchain directory names
+- [ ] Update `NATIVE_PREFIX`, `BOOTSTRAP_PREFIX`, `TARGET_PREFIX` to use new computed paths
 - [ ] Test that new paths generate correctly for different BUILD/HOST/TARGET combinations
 
-### Step 2: Add BUILD/HOST/TARGET Conditional Logic  
+### Step 2: Add BUILD/HOST/TARGET Conditional Logic
 - [ ] Add logic to determine which build phases are needed:
   - Native build: HOST==BUILD==TARGET (1 phase)
   - Cross compile: HOST==BUILD≠TARGET (2 phases: bootstrap + final)
@@ -350,7 +362,8 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 
 ### Step 3: Refactor Pattern Rules to be Generic
 - [ ] Replace hardcoded `$(BB)/.component.{configured,compiled,installed}` patterns
-- [ ] Replace hardcoded `$(B)/.component.{configured,compiled,installed}` patterns  
+- [ ] Replace hardcoded `$(B)/.component.{configured,compiled,installed}` patterns
+- [ ] Update linux.mk to use generic paths instead of hardcoded `$(B)`
 - [ ] Create single generic pattern rule that works for any toolchain path
 - [ ] Remove duplication between bootstrap and regular build rules
 - [ ] Test that pattern rules work for all toolchain paths
@@ -358,26 +371,35 @@ build/linux/$(HOST)/$(TARGET_TOOLCHAIN_NAME)/.gcc.installed: TOOLCHAIN_TYPE = fi
 ### Step 4: Move Target-Specific Variables to .installed Targets
 - [ ] Move variables from `bootstrap-component:` to `path/.component.installed:` in binutils.mk
 - [ ] Move variables from `component:` to `path/.component.installed:` in binutils.mk
-- [ ] Repeat for gcc.mk, glibc.mk, linux.mk
+- [ ] Repeat for gcc.mk, glibc.mk, linux.mk, libstdc++.mk
 - [ ] Update hardcoded paths in variables like `SYSROOT_SYMLINK`, `SYSROOT_SYMLINK_DIR`
+- [ ] Ensure pattern rules can still inherit variables from `.installed` targets
 - [ ] Test that variables are set correctly during builds
 
 ### Step 5: Update Dependencies and Prerequisites
-- [ ] Replace hardcoded `| bootstrap-binutils` with conditional dependencies
-- [ ] Make gcc dependencies conditional on build phase (bootstrap-binutils vs binutils)
-- [ ] Make glibc dependencies conditional on build phase (bootstrap-gcc vs gcc)
-- [ ] Add proper ordering within phases (binutils → gcc → glibc)
+- [ ] Eliminate all order-only prerequisites (`| bootstrap-binutils`) throughout all .mk files
+- [ ] Make gcc dependencies conditional on build phase (declare on `.installed` files)
+- [ ] Make glibc dependencies conditional on build phase (declare on `.installed` files)
+- [ ] Make bootstrap-libstdc++ dependencies conditional on build phase (declare on `.installed` files)
+- [ ] Make linux-headers dependencies conditional on build phase (declare on `.installed` files)
+- [ ] Add proper ordering within phases (binutils → gcc → glibc, bootstrap: + libstdc++)
 - [ ] Test dependency resolution for different build scenarios
 
 ### Step 6: Update Phony Targets to be Pure Aliases
 - [ ] Change phony targets (gcc, binutils, glibc) to point to appropriate `.installed` files
 - [ ] Remove target-specific variable assignments from phony targets
-- [ ] Add bootstrap component aliases (bootstrap-gcc, bootstrap-binutils, etc.)
+- [ ] Add bootstrap component aliases (bootstrap-gcc, bootstrap-binutils, bootstrap-glibc, bootstrap-libstdc++)
+- [ ] Add linux-headers alias to appropriate `.installed` file
+- [ ] Update `.PHONY:` declarations to match new target structure
 - [ ] Test that `make gcc HOST=x TARGET=y` works correctly
 
-### Step 7: Testing and Validation
+### Step 7: Update Clean Targets
+- [ ] Update clean targets to work with new unified directory structure
+- [ ] Test that clean operations work correctly for different BUILD/HOST/TARGET combinations
+
+### Step 8: Testing and Validation
 - [ ] Test native build scenario: `make gcc HOST=x86_64 TARGET=x86_64`
-- [ ] Test cross-compile scenario: `make gcc HOST=x86_64 TARGET=aarch64`  
+- [ ] Test cross-compile scenario: `make gcc HOST=x86_64 TARGET=aarch64`
 - [ ] Test bootstrap scenario: `make bootstrap-gcc`
 - [ ] Verify all generated paths and toolchain names are correct
 - [ ] Verify reproducibility flags are still applied correctly
