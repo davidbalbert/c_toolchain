@@ -1,19 +1,25 @@
-linux-headers: $(B)/.linux-headers.installed
-linux-headers: PATH := $(ORIG_PATH)
+%/.linux-headers.installed: PATH := $(ORIG_PATH)
 
-$(B)/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
-	$(eval TARGET_ARCH := $(word 1,$(subst -, ,$(TARGET_TRIPLE))))
-	$(eval KERNEL_ARCH := $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH)))))
+$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(BOOTSTRAP_BUILD_DIR)
+$(HOST_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(HOST_BUILD_DIR)
+$(TARGET_BUILD_DIR)/.linux-headers.installed: BUILD_DIR := $(TARGET_BUILD_DIR)
 
+# override sysroot for bootstrap
+$(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed: SYSROOT := $(BUILD_SYSROOT)
+
+%/.linux-headers.installed: TARGET_ARCH = $(word 1,$(subst -, ,$(TARGET_TRIPLE)))
+%/.linux-headers.installed: KERNEL_ARCH = $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH))))
+%/.linux-headers.installed: SYSROOT = $(patsubst $(BUILD_DIR)/%,$(OUT_DIR)/%/sysroot,$(BUILD_DIR))
+
+%/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
 	$(eval TMPDIR := $(shell mktemp -d))
 
-	mkdir -p $(B)/linux-headers/build $(SYSROOT)
-	ln -sfn $(SRC_DIR)/linux-$(LINUX_VERSION) $(B)/linux-headers/src
-	cd $(B)/linux-headers/build
-	$(MAKE) -f $(B)/linux-headers/src/Makefile \
+	mkdir -p $(BUILD_DIR)/linux-headers/build $(SYSROOT)
+	ln -sfn $(SRC_DIR)/linux-$(LINUX_VERSION) $(BUILD_DIR)/linux-headers/src
+	$(MAKE) -f $(BUILD_DIR)/linux-headers/src/Makefile \
 		ARCH="$(KERNEL_ARCH)" \
 		INSTALL_HDR_PATH="$(TMPDIR)/usr" \
-		O=$(B)/linux-headers/build \
+		O=$(BUILD_DIR)/linux-headers/build \
 		headers_install
 	find "$(TMPDIR)" -exec touch -h -d "@$(shell cat $(SRC_DIR)/linux-$(LINUX_VERSION)/.timestamp 2>/dev/null || echo 1)" {} \;
 	cp -a "$(TMPDIR)"/* $(SYSROOT)/
