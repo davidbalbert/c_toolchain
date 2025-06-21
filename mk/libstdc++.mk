@@ -32,6 +32,6 @@ $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.c
 		TMPDIR=$$(mktemp -d) && \
 		$(MAKE) DESTDIR="$$TMPDIR" install && \
 		find "$$TMPDIR" -exec touch -h -d "@$(SOURCE_DATE_EPOCH)" {} \; && \
-		cp -a "$$TMPDIR"/* $(BOOTSTRAP_SYSROOT)/ && \
+		cp -a "$$TMPDIR"/* $(BUILD_SYSROOT)/ && \
 		rm -rf "$$TMPDIR"
 	touch $@
