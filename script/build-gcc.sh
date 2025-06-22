@@ -174,7 +174,7 @@ if [ "$BOOTSTRAP" == "true" ]; then
     CONFIGURE_OPTIONS+=("--disable-libvtv")
     CONFIGURE_OPTIONS+=("--disable-libstdcxx")
     CONFIGURE_OPTIONS+=("--without-headers")
-    CONFIGURE_OPTIONS+=("--with-gxx-include-dir=$SYSROOT/usr/include/c++/$GCC_VERSION")
+    CONFIGURE_OPTIONS+=("--with-gxx-include-dir=/sysroot/usr/include/c++/$GCC_VERSION")
 else
     CONFIGURE_OPTIONS+=("--enable-host-pie")
     CONFIGURE_OPTIONS+=("--disable-fixincludes")
