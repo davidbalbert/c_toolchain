@@ -44,11 +44,6 @@ $(TARGET_BUILD_DIR)/.gcc.installed: PATH := $(CROSS_PREFIX)/bin:$(BOOTSTRAP_PREF
 
 $(BUILD_BUILD_DIR)/.gcc.installed: GCC_CONFIG = $(GCC_BASE_CONFIG) $(GCC_FINAL_CONFIG) $(BUILD_TIME_TOOLS)
 
-$(BOOTSTRAP_BUILD_DIR)/.gcc.configured: $(BOOTSTRAP_BUILD_DIR)/.binutils.installed
-$(BUILD_BUILD_DIR)/.gcc.configured: $(BUILD_BUILD_DIR)/.binutils.installed
-$(TARGET_BUILD_DIR)/.gcc.configured: $(TARGET_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
-$(CROSS_BUILD_DIR)/.gcc.configured: $(CROSS_BUILD_DIR)/.binutils.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
-
 GCC_BASE_CONFIG = \
 	--host=$(HOST_TRIPLE) \
 	--target=$(TARGET_TRIPLE) \
@@ -82,7 +77,7 @@ GCC_FINAL_CONFIG = \
 
 .PRECIOUS: %/.gcc.configured %/.gcc.compiled
 
-%/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION)
+%/.gcc.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) %/.binutils.installed
 	mkdir -p $*/gcc/build $(PREFIX) $(SYSROOT)
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION) $*/gcc/src
 	ln -sfn $(SYSROOT_SYMLINK) $(PREFIX)/sysroot

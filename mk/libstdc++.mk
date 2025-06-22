@@ -13,6 +13,8 @@ LIBSTDCXX_CONFIG = \
 	--disable-libstdcxx-pch \
 	--with-gxx-include-dir=/usr/include/c++/$(GCC_VERSION)
 
+.PRECIOUS: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.configured $(BOOTSTRAP_BUILD_DIR)/.libstdc++.compiled
+
 $(BOOTSTRAP_BUILD_DIR)/.libstdc++.configured: $(SRC_DIR)/gcc-$(GCC_VERSION) $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.glibc.installed
 	mkdir -p $(BOOTSTRAP_BUILD_DIR)/libstdc++/build $(BUILD_SYSROOT)
 	ln -sfn $(SRC_DIR)/gcc-$(GCC_VERSION)/libstdc++-v3 $(BOOTSTRAP_BUILD_DIR)/libstdc++/src

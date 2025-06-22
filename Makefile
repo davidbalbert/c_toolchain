@@ -69,28 +69,16 @@ include $(PROJECT_ROOT)/mk/*.mk
 # Phase dependency chains
 # Case 1: Native build (BUILD = HOST = TARGET)
 ifeq ($(BUILD)_$(HOST)_$(TARGET),$(BUILD)_$(BUILD)_$(BUILD))
-  $(TARGET_BUILD_DIR)/.gcc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(TARGET_BUILD_DIR)/.binutils.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(TARGET_BUILD_DIR)/.glibc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
+  $(TARGET_BUILD_DIR)/.binutils.configured: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
 # Case 2: Cross-compiler for build system (BUILD = HOST ≠ TARGET)
 else ifeq ($(HOST),$(BUILD))
-  $(TARGET_BUILD_DIR)/.gcc.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(TARGET_BUILD_DIR)/.binutils.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(TARGET_BUILD_DIR)/.glibc.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(BUILD_BUILD_DIR)/.gcc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(BUILD_BUILD_DIR)/.binutils.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(BUILD_BUILD_DIR)/.glibc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
+  $(BUILD_BUILD_DIR)/.binutils.configured: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
+  $(TARGET_BUILD_DIR)/.binutils.configured: $(BUILD_BUILD_DIR)/.glibc.installed
 # Case 3: Native or cross-compilation to different host (BUILD ≠ HOST)
 else
-  $(TARGET_BUILD_DIR)/.gcc.installed: $(CROSS_BUILD_DIR)/.gcc.installed
-  $(TARGET_BUILD_DIR)/.binutils.installed: $(CROSS_BUILD_DIR)/.gcc.installed
-  $(TARGET_BUILD_DIR)/.glibc.installed: $(CROSS_BUILD_DIR)/.gcc.installed
-  $(CROSS_BUILD_DIR)/.gcc.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(CROSS_BUILD_DIR)/.binutils.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(CROSS_BUILD_DIR)/.glibc.installed: $(BUILD_BUILD_DIR)/.gcc.installed
-  $(BUILD_BUILD_DIR)/.gcc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(BUILD_BUILD_DIR)/.binutils.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
-  $(BUILD_BUILD_DIR)/.glibc.installed: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
+  $(BUILD_BUILD_DIR)/.binutils.configured: $(BOOTSTRAP_BUILD_DIR)/.libstdc++.installed
+  $(CROSS_BUILD_DIR)/.binutils.configured: $(BUILD_BUILD_DIR)/.glibc.installed
+  $(TARGET_BUILD_DIR)/.binutils.configured: $(CROSS_BUILD_DIR)/.glibc.installed
 endif
 
 .PHONY: download clean test-parallel bootstrap-binutils bootstrap-gcc bootstrap-glibc bootstrap-libstdc++ linux-headers binutils gcc glibc

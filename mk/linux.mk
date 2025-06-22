@@ -5,6 +5,8 @@ $(BUILD_ROOT)/build/%/.linux-headers.installed: TARGET_ARCH = $(word 1,$(subst -
 $(BUILD_ROOT)/build/%/.linux-headers.installed: KERNEL_ARCH = $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH))))
 $(BUILD_ROOT)/build/%/.linux-headers.installed: SYSROOT = $(OUT_DIR)/$*/sysroot
 
+.PRECIOUS: build/%/.linux-headers.installed
+
 $(BUILD_ROOT)/build/%/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
 	$(eval TMPDIR := $(shell mktemp -d))
 
