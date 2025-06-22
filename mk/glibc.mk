@@ -24,10 +24,10 @@ $(CROSS_BUILD_DIR)/.glibc.installed: PATH := $(CROSS_PREFIX)/bin:$(ORIG_PATH)
 $(TARGET_BUILD_DIR)/.glibc.installed: SYSROOT := $(TARGET_SYSROOT)
 $(TARGET_BUILD_DIR)/.glibc.installed: PATH := $(CROSS_PREFIX)/bin:$(ORIG_PATH)
 
-$(BOOTSTRAP_BUILD_DIR)/.glibc.configured: $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed
-$(BUILD_BUILD_DIR)/.glibc.configured: $(BUILD_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed
-$(CROSS_BUILD_DIR)/.glibc.configured: $(CROSS_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed
-$(TARGET_BUILD_DIR)/.glibc.configured: $(TARGET_BUILD_DIR)/.gcc.installed $(BOOTSTRAP_BUILD_DIR)/.linux-headers.installed
+$(BOOTSTRAP_BUILD_DIR)/.glibc.configured: $(BOOTSTRAP_BUILD_DIR)/.gcc.installed $(BUILD_BUILD_DIR)/.linux-headers.installed
+$(BUILD_BUILD_DIR)/.glibc.configured: $(BUILD_BUILD_DIR)/.gcc.installed $(BUILD_BUILD_DIR)/.linux-headers.installed
+$(CROSS_BUILD_DIR)/.glibc.configured: $(CROSS_BUILD_DIR)/.gcc.installed $(CROSS_BUILD_DIR)/.linux-headers.installed
+$(TARGET_BUILD_DIR)/.glibc.configured: $(TARGET_BUILD_DIR)/.gcc.installed $(TARGET_BUILD_DIR)/.linux-headers.installed
 
 GLIBC_CONFIG = \
 	--prefix=/usr \

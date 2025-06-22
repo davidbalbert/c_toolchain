@@ -1,11 +1,11 @@
-build/%/.linux-headers.installed: PATH := $(ORIG_PATH)
+$(BUILD_ROOT)/build/%/.linux-headers.installed: PATH := $(ORIG_PATH)
 
-build/%/.linux-headers.installed: BUILD_DIR = $(abspath build/$*)
-build/%/.linux-headers.installed: TARGET_ARCH = $(word 1,$(subst -, ,$(TARGET_TRIPLE)))
-build/%/.linux-headers.installed: KERNEL_ARCH = $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH))))
-build/%/.linux-headers.installed: SYSROOT = $(OUT_DIR)/$*/sysroot
+$(BUILD_ROOT)/build/%/.linux-headers.installed: BUILD_DIR = $(abspath $(BUILD_ROOT)/build/$*)
+$(BUILD_ROOT)/build/%/.linux-headers.installed: TARGET_ARCH = $(word 1,$(subst -, ,$(TARGET_TRIPLE)))
+$(BUILD_ROOT)/build/%/.linux-headers.installed: KERNEL_ARCH = $(if $(filter x86_64,$(TARGET_ARCH)),x86_64,$(if $(filter aarch64,$(TARGET_ARCH)),arm64,$(error Unsupported architecture: $(TARGET_ARCH))))
+$(BUILD_ROOT)/build/%/.linux-headers.installed: SYSROOT = $(OUT_DIR)/$*/sysroot
 
-build/%/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
+$(BUILD_ROOT)/build/%/.linux-headers.installed: $(SRC_DIR)/linux-$(LINUX_VERSION)
 	$(eval TMPDIR := $(shell mktemp -d))
 
 	mkdir -p $(BUILD_DIR)/linux-headers/build $(SYSROOT)
